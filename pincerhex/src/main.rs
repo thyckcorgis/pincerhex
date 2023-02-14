@@ -9,6 +9,7 @@ mod union_find;
 use ai::{BotError, HexBot};
 use tile::{Colour, Move, PieceState};
 
+#[allow(dead_code)]
 const HISTFILE: &str = "history.txt";
 
 enum REPLError {
@@ -174,9 +175,9 @@ fn main() -> Result<(), Error> {
 
     let mut bot = HexBot::new(colour);
     let mut rl = Editor::<()>::new()?;
-    if rl.load_history(HISTFILE).is_err() {
-        eprintln!("No previous history.");
-    }
+    // if rl.load_history(HISTFILE).is_err() {
+    // eprintln!("No previous history.");
+    // }
     loop {
         let readline = rl.readline("");
         match readline {
@@ -186,24 +187,18 @@ fn main() -> Result<(), Error> {
                 }
                 rl.add_history_entry(line.as_str());
                 match process_line(&mut bot, &line) {
+                    Ok(HexBotOutput::Empty) => {}
                     Ok(out) => println!("{out}"),
                     Err(err) => eprintln!("{err}"),
                 }
             }
-            Err(ReadlineError::Interrupted) => {
-                eprintln!("CTRL-C");
-                break;
-            }
-            Err(ReadlineError::Eof) => {
-                eprintln!("CTRL-D");
-                break;
-            }
+            Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
             Err(err) => {
                 eprintln!("Error: {err:?}");
                 break;
             }
         }
     }
-    rl.save_history(HISTFILE)?;
+    // rl.save_history(HISTFILE)?;
     Ok(())
 }

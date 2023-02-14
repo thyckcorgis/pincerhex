@@ -19,7 +19,7 @@ impl<'a> Board {
     pub fn new(size: u8) -> Self {
         Self {
             size: size as usize,
-            board: vec![PieceState::Empty; size.pow(2) as usize],
+            board: vec![PieceState::Empty; (size as usize).pow(2)],
         }
     }
 
@@ -38,11 +38,19 @@ impl<'a> Board {
             if let Tile::Valid(row, col) = tile {
                 let other = Tile::Valid(col, row);
                 let (i, j) = (self.get_tile(tile), self.get_tile(other));
-                if let Some(PieceState::Colour(colour)) = i {
-                    self.set_tile(other, PieceState::Colour(colour.opponent()))?;
+                if let Some(c) = i {
+                    let piece = match c {
+                        PieceState::Colour(c) => PieceState::Colour(c.opponent()),
+                        PieceState::Empty => PieceState::Empty,
+                    };
+                    self.set_tile(other, piece)?;
                 }
-                if let Some(PieceState::Colour(colour)) = j {
-                    self.set_tile(tile, PieceState::Colour(colour.opponent()))?;
+                if let Some(c) = j {
+                    let piece = match c {
+                        PieceState::Colour(c) => PieceState::Colour(c.opponent()),
+                        PieceState::Empty => PieceState::Empty,
+                    };
+                    self.set_tile(tile, piece)?;
                 }
             }
         }
@@ -50,7 +58,21 @@ impl<'a> Board {
     }
 
     pub fn get_compressed(&self) -> String {
-        todo!("compressed version of {}", self)
+        let mut chars: Vec<char> = self
+            .board
+            .iter()
+            .map(|tile| match tile {
+                PieceState::Colour(Colour::Black) => 'B',
+                PieceState::Colour(Colour::White) => 'W',
+                PieceState::Empty => '.',
+            })
+            .collect();
+
+        for i in (1..self.size + 1).rev() {
+            chars.insert(i * self.size, '|');
+        }
+
+        chars.into_iter().collect::<String>()
     }
 
     fn neighbour(&self, tile: Tile, row: i8, col: i8) -> Option<(Tile, PieceState)> {
@@ -105,14 +127,16 @@ impl<'a> Board {
         self.board[idx] = s;
         Ok(())
     }
+}
 
+impl std::fmt::Display for Board {
     /// Example output:
     /// B . . .
     ///  . B W .
     ///   . . B .
     ///    W . W B
     /// ------------------
-    fn format_board(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for r in 0..self.size {
             write!(f, "{}", " ".repeat(r))?;
 
@@ -129,12 +153,6 @@ impl<'a> Board {
         }
 
         write!(f, "{}", "-".repeat(18))
-    }
-}
-
-impl std::fmt::Display for Board {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.format_board(f)
     }
 }
 
