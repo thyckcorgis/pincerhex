@@ -1,84 +1,138 @@
 use rustyline::{self, error::ReadlineError, Editor};
 
+mod ai;
 mod board;
+mod state;
 mod tile;
 mod union_find;
+
+use ai::{BotError, HexBot};
+use tile::{Colour, Move, PieceState};
 
 const HISTFILE: &str = "history.txt";
 
 enum REPLError {
     InvalidCommand,
+    Usage(Usage),
+    Bot(BotError),
+}
+
+enum Usage {
+    InitBoard,
+    #[allow(dead_code)]
+    Mcts,
+}
+
+impl std::fmt::Display for Usage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InitBoard => write!(f, "usage: init_board <size>"),
+            Self::Mcts => write!(f, "usage: mcts <param_name> <param_value>"),
+        }
+    }
 }
 
 impl std::fmt::Display for REPLError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            REPLError::InvalidCommand => f.write_str("invalid command"),
+            Self::InvalidCommand => write!(f, "invalid command"),
+            Self::Usage(u) => write!(f, "{u}"),
+            Self::Bot(b) => match b {
+                BotError::State(e) => match e {
+                    state::Error::TileNotEmpty => write!(f, "tile not empty"),
+                    state::Error::InvalidTile => write!(f, "invalid tile"),
+                    state::Error::Board(b) => match b {
+                        board::Error::NotInRange => write!(f, "not in range"),
+                    },
+                },
+                BotError::InvalidMove(m) => match m {
+                    tile::Error::InvalidCol => write!(f, "invalid col"),
+                    tile::Error::InvalidRow => write!(f, "invalid row"),
+                },
+                BotError::EmptyMove => write!(f, "empty move"),
+            },
         }
     }
+}
+
+pub enum Winner {
+    Bot,
+    Opponent,
 }
 
 enum HexBotOutput {
     Empty,
+    Move(Move),
+    CheckWin(Option<Winner>),
+    String(String),
 }
 
 impl std::fmt::Display for HexBotOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("todo")
+        match self {
+            Self::Empty => Ok(()),
+            Self::Move(m) => match m {
+                Move::Move(mv) => write!(f, "{mv}"),
+                Move::Swap => write!(f, "swap"),
+            },
+            Self::CheckWin(w) => match w {
+                Some(Winner::Bot) => write!(f, "1"),
+                Some(Winner::Opponent) => write!(f, "-1"),
+                None => write!(f, "0"),
+            },
+            Self::String(s) => write!(f, "{s}"),
+        }
     }
 }
 
-fn process_command(command: &str, args: &[&str]) -> Result<HexBotOutput, REPLError> {
+impl From<BotError> for REPLError {
+    fn from(value: BotError) -> Self {
+        Self::Bot(value)
+    }
+}
+
+fn process_command(
+    bot: &mut HexBot,
+    command: &str,
+    args: &[&str],
+) -> Result<HexBotOutput, REPLError> {
     match command {
         "i" | "init_board" => {
-            // init board here
-            todo!("init board")
+            let size = args
+                .first()
+                .and_then(|s| s.parse::<u8>().ok())
+                .ok_or(REPLError::Usage(Usage::InitBoard))?;
+            bot.init_board(size);
+            Ok(HexBotOutput::Empty)
         }
-        "b" | "show_board" => {
-            // show board here
-            todo!("show board")
-        }
-        "p" | "pretty_board" => {
-            // show pretty board here
-            todo!("pretty_board")
-        }
+        "b" | "show_board" => Ok(HexBotOutput::String(bot.get_compressed())),
+        "p" | "pretty_board" => Ok(HexBotOutput::String(bot.get_pretty())),
         "v" | "make_move" => {
-            // make move here
-            todo!("make move");
+            let mv = bot.make_move()?;
+            Ok(HexBotOutput::Move(mv))
         }
         "o" | "seto" => {
-            // set opponent move here
-            todo!("set opponent move here");
+            bot.set_tile(args.first(), PieceState::Colour(bot.colour().opponent()))?;
+            Ok(HexBotOutput::Empty)
         }
         "y" | "sety" => {
-            // set bot move here
-            todo!("set bot move here")
+            bot.set_tile(args.first(), PieceState::Colour(bot.colour()))?;
+            Ok(HexBotOutput::Empty)
         }
         "unset" => {
-            // unset here
-            todo!("unset move here")
+            bot.set_tile(args.first(), PieceState::Empty)?;
+            Ok(HexBotOutput::Empty)
         }
         "swap" => {
-            // swap here
-            todo!("swap move here")
+            bot.swap()?;
+            Ok(HexBotOutput::Empty)
         }
-        "c" | "check_win" => {
-            // check win here
-            todo!("check win here")
-        }
-        "m" | "mcts" => {
-            // set mcts params here
-            todo!("set mcts params here")
-        }
-        "help_mcts" => {
-            // display mcts params here
-            todo!("display mcts params here")
-        }
+        "c" | "check_win" => Ok(HexBotOutput::CheckWin(bot.check_win())),
         &_ => Err(REPLError::InvalidCommand),
     }
 }
 
-fn process_line(line: &str) -> Result<HexBotOutput, REPLError> {
+fn process_line(bot: &mut HexBot, line: &str) -> Result<HexBotOutput, REPLError> {
     let arr = line
         .split(' ')
         .filter_map(|s| match s.trim() {
@@ -87,11 +141,38 @@ fn process_line(line: &str) -> Result<HexBotOutput, REPLError> {
         })
         .collect::<Vec<&str>>();
     arr.first().map_or(Ok(HexBotOutput::Empty), |command| {
-        process_command(command, &arr.as_slice()[1..])
+        process_command(bot, command, &arr.as_slice()[1..])
     })
 }
 
-fn main() -> rustyline::Result<()> {
+enum Error {
+    Readline(rustyline::error::ReadlineError),
+    Usage(String),
+}
+
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Readline(err) => write!(f, "{err}"),
+            Self::Usage(s) => write!(f, "usage: {s} <colour>"),
+        }
+    }
+}
+
+impl From<rustyline::error::ReadlineError> for Error {
+    fn from(value: rustyline::error::ReadlineError) -> Self {
+        Self::Readline(value)
+    }
+}
+
+fn main() -> Result<(), Error> {
+    let args: Vec<String> = std::env::args().collect();
+    let colour = args
+        .get(1)
+        .and_then(|s| Colour::try_from(s).ok())
+        .ok_or(Error::Usage(args[0].clone()))?;
+
+    let mut bot = HexBot::new(colour);
     let mut rl = Editor::<()>::new()?;
     if rl.load_history(HISTFILE).is_err() {
         eprintln!("No previous history.");
@@ -100,13 +181,13 @@ fn main() -> rustyline::Result<()> {
         let readline = rl.readline("");
         match readline {
             Ok(line) => {
-                if line == "" {
+                if line.is_empty() {
                     continue;
                 }
                 rl.add_history_entry(line.as_str());
-                match process_line(&line) {
-                    Ok(out) => println!("{}", out),
-                    Err(err) => eprintln!("{}", err),
+                match process_line(&mut bot, &line) {
+                    Ok(out) => println!("{out}"),
+                    Err(err) => eprintln!("{err}"),
                 }
             }
             Err(ReadlineError::Interrupted) => {
@@ -123,5 +204,6 @@ fn main() -> rustyline::Result<()> {
             }
         }
     }
-    rl.save_history(HISTFILE)
+    rl.save_history(HISTFILE)?;
+    Ok(())
 }

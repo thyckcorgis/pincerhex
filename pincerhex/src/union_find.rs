@@ -1,8 +1,10 @@
 use crate::tile::Tile;
+use std::cmp::Ordering;
 
 use std::collections::HashMap;
 
-struct UnionFind {
+#[derive(Clone)]
+pub struct UnionFind {
     set: HashMap<Tile, Element>,
 }
 
@@ -13,18 +15,10 @@ struct Element {
 }
 
 impl UnionFind {
-    fn new(size: usize) -> Self {
+    pub fn new(size: usize) -> Self {
         Self {
             set: HashMap::with_capacity(size),
         }
-    }
-
-    fn clone(&self) -> Self {
-        let mut new_set = HashMap::with_capacity(self.set.len());
-        for (k, v) in self.set.iter() {
-            new_set.insert(*k, *v);
-        }
-        Self { set: new_set }
     }
 
     pub fn connected(&mut self, x: Tile, y: Tile) -> bool {
@@ -56,13 +50,13 @@ impl UnionFind {
         let x = self.set.get(&rep_x).unwrap();
         let y = self.set.get(&rep_y).unwrap();
 
-        if x.rank < y.rank {
-            self.set.get_mut(&rep_x).unwrap().parent = y.parent;
-        } else if x.rank > y.rank {
-            self.set.get_mut(&rep_y).unwrap().parent = x.parent;
-        } else {
-            self.set.get_mut(&rep_x).unwrap().parent = y.parent;
-            self.set.get_mut(&rep_y).unwrap().rank += 1;
+        match x.rank.cmp(&y.rank) {
+            Ordering::Less => self.set.get_mut(&rep_x).unwrap().parent = y.parent,
+            Ordering::Greater => self.set.get_mut(&rep_y).unwrap().parent = x.parent,
+            Ordering::Equal => {
+                self.set.get_mut(&rep_x).unwrap().parent = y.parent;
+                self.set.get_mut(&rep_y).unwrap().rank += 1;
+            }
         }
     }
 }

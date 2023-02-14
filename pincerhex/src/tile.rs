@@ -1,48 +1,117 @@
-use core::str::FromStr;
 use std::fmt::Write;
 
 // Black goes top -> bottom. White goes left -> right
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum Colour {
     Black,
-    Empty,
     White,
+}
+
+#[derive(Clone, Copy)]
+pub enum SwapRole {
+    Start,
+    Swap,
+}
+
+pub enum Move {
+    Move(Tile),
+    Swap,
+}
+
+pub struct InvalidColour;
+
+impl TryFrom<&String> for Colour {
+    type Error = InvalidColour;
+
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "w" | "white" => Ok(Self::White),
+            "b" | "black" => Ok(Self::Black),
+            _ => Err(InvalidColour),
+        }
+    }
+}
+
+impl From<Colour> for SwapRole {
+    fn from(value: Colour) -> Self {
+        match value {
+            Colour::Black => Self::Start,
+            Colour::White => Self::Swap,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum PieceState {
+    Colour(Colour),
+    Empty,
+}
+
+impl Colour {
+    pub const fn group_idx(self) -> usize {
+        match self {
+            Self::Black => 0,
+            Self::White => 1,
+        }
+    }
+    pub const fn opponent(self) -> Self {
+        match self {
+            Self::Black => Self::White,
+            Self::White => Self::Black,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum Tile {
-    Tile(u8, u8),
+    Valid(u8, u8),
     Edge1,
     Edge2,
     Invalid,
 }
 
-pub enum TileError {
+impl Tile {
+    pub const fn edge(self, colour: Colour) -> u8 {
+        match (self, colour) {
+            (Self::Valid(r, _), Colour::Black) => r,
+            (Self::Valid(_, c), Colour::White) => c,
+            (_, _) => panic!("called edge on an invalid tile"),
+        }
+    }
+
+    pub const fn neighbour(self, row: i8, col: i8) -> Self {
+        match self {
+            Self::Valid(r, c) => Self::Valid((r as i8 + row) as u8, (c as i8 + col) as u8),
+            Self::Edge1 | Self::Edge2 | Self::Invalid => Self::Invalid,
+        }
+    }
+}
+
+pub enum Error {
     InvalidCol,
     InvalidRow,
 }
 
-impl FromStr for Tile {
-    type Err = TileError;
+impl TryFrom<&str> for Tile {
+    type Error = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let r = s.chars().nth(0).ok_or(TileError::InvalidRow)? as u8 - 97; // First letter
-        let c = s[1..].parse::<u8>().map_err(|_| TileError::InvalidCol)? - 1; // All following digits
-
-        Ok(Tile::Tile(r, c))
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        let r = s.chars().next().ok_or(Error::InvalidRow)? as u8 - 97; // First letter
+        let c = s[1..].parse::<u8>().map_err(|_| Error::InvalidCol)? - 1; // All following digits
+        Ok(Self::Valid(r, c))
     }
 }
 
 impl std::fmt::Display for Tile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            Tile::Tile(row, col) => {
+            Self::Valid(row, col) => {
                 f.write_char((row + 97) as char)?;
                 f.write_fmt(format_args!("{}", col + 1))
             }
-            Tile::Edge1 => f.write_str("edge1"),
-            Tile::Edge2 => f.write_str("edge2"),
-            Tile::Invalid => f.write_str("invalid"),
+            Self::Edge1 => f.write_str("edge1"),
+            Self::Edge2 => f.write_str("edge2"),
+            Self::Invalid => f.write_str("invalid"),
         }
     }
 }
@@ -52,7 +121,6 @@ impl std::fmt::Display for Colour {
         match &self {
             Self::Black => write!(f, "Black"),
             Self::White => write!(f, "White"),
-            Self::Empty => write!(f, "Empty"),
         }
     }
 }
