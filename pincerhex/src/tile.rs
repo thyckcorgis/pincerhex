@@ -79,6 +79,15 @@ impl Tile {
         }
     }
 
+    pub const fn to_index(self, size: usize) -> Option<usize> {
+        match self {
+            Self::Valid(r, c) if r < (size as u8) && c < (size as u8) => {
+                Some((r as usize) * size + c as usize)
+            }
+            Self::Valid(_, _) | Self::Edge1 | Self::Edge2 | Self::Invalid => None,
+        }
+    }
+
     pub const fn neighbour(self, row: i8, col: i8) -> Self {
         match self {
             Self::Valid(r, c) => Self::Valid((r as i8 + row) as u8, (c as i8 + col) as u8),
@@ -87,6 +96,7 @@ impl Tile {
     }
 }
 
+#[derive(Debug)]
 pub enum Error {
     InvalidCol,
     InvalidRow,

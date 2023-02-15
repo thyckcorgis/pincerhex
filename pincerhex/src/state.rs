@@ -35,6 +35,10 @@ impl State {
         }
     }
 
+    pub const fn get_board(&self) -> &Board {
+        &self.board
+    }
+
     pub fn should_swap(&self) -> bool {
         for i in self.board.iter() {
             if let PieceState::Colour(_) = i.1 {

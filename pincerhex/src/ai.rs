@@ -2,10 +2,15 @@ use rand::Rng;
 use std::time::Duration;
 
 use crate::{
+    potential::PotEval,
     state::{self, State, DEFAULT_SIZE},
     tile::{self, Colour, Move, PieceState, SwapRole, Tile},
     Winner,
 };
+
+/// Whether or not to play with the swap rule
+/// Should probably be an environment variable
+pub const SWAP_RULE: bool = false;
 
 pub struct HexBot {
     colour: Colour,
@@ -40,6 +45,7 @@ impl Default for MCTSParams {
     }
 }
 
+#[derive(Debug)]
 pub enum BotError {
     State(state::Error),
     EmptyMove,
@@ -69,14 +75,14 @@ impl HexBot {
         self.colour
     }
 
+    fn place_piece(&mut self, mv: Tile, state: PieceState) -> Result<(), BotError> {
+        self.state.place_piece(mv, state).map_err(BotError::State)
+    }
+
     pub fn set_tile(&mut self, mv: Option<&&str>, state: PieceState) -> Result<(), BotError> {
-        self.state
-            .place_piece(
-                mv.ok_or(BotError::EmptyMove)
-                    .and_then(|s| (*s).try_into().map_err(BotError::InvalidMove))?,
-                state,
-            )
-            .map_err(BotError::State)
+        mv.ok_or(BotError::EmptyMove)
+            .and_then(|s| Tile::try_from(*s).map_err(BotError::InvalidMove))
+            .and_then(|mv| self.place_piece(mv, state))
     }
 
     pub fn init_board(&mut self, size: u8) {
@@ -94,14 +100,13 @@ impl HexBot {
     }
 
     pub fn make_move(&mut self) -> Result<Move, BotError> {
-        match self.swap_state {
-            Some(s) => {
-                let mv = self.handle_swap(s)?;
-                self.swap_state = None;
-                self.move_count += 1;
-                Ok(mv)
-            }
-            None => Ok(Move::Move(self.regular_move())),
+        if let (Some(s), true) = (self.swap_state, SWAP_RULE) {
+            let mv = self.handle_swap(s)?;
+            self.swap_state = None;
+            self.move_count += 1;
+            Ok(mv)
+        } else {
+            Ok(Move::Move(self.regular_move()))
         }
     }
 
@@ -131,7 +136,14 @@ impl HexBot {
     }
 
     fn regular_move(&mut self) -> Tile {
-        todo!("make regular move for {} bot", self.colour)
+        let mv = PotEval::new(self.state.get_board(), self.colour)
+            .evaluate()
+            .get_best_move(self.move_count);
+
+        self.place_piece(mv, PieceState::Colour(self.colour))
+            .expect("valid move");
+        self.move_count += 1;
+        mv
     }
 
     pub fn check_win(&mut self) -> Option<Winner> {

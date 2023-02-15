@@ -23,6 +23,10 @@ impl<'a> Board {
         }
     }
 
+    pub fn get(&self, r: u8, c: u8) -> Option<PieceState> {
+        self.get_tile(Tile::Valid(r, c))
+    }
+
     pub fn swap_pieces(&mut self) -> Result<(), Error> {
         let mut to_swap: HashSet<Tile> = HashSet::new();
 
@@ -68,16 +72,16 @@ impl<'a> Board {
             })
             .collect();
 
-        for i in (1..self.size + 1).rev() {
+        for i in (1..=self.size).rev() {
             chars.insert(i * self.size, '|');
         }
 
-        chars.into_iter().collect::<String>()
+        chars.into_iter().collect()
     }
 
-    fn neighbour(&self, tile: Tile, row: i8, col: i8) -> Option<(Tile, PieceState)> {
+    pub fn neighbour(&self, tile: Tile, row: i8, col: i8) -> Option<(Tile, PieceState)> {
         let n = tile.neighbour(row, col);
-        self.tile_to_index(n)
+        tile.to_index(self.size)
             .map(|idx| self.board[idx])
             .map(|state| (n, state))
     }
@@ -89,7 +93,7 @@ impl<'a> Board {
         }
     }
 
-    fn index_to_tile(&self, idx: usize) -> Tile {
+    pub fn index_to_tile(&self, idx: usize) -> Tile {
         if idx >= self.board.len() {
             Tile::Invalid
         } else {
@@ -108,22 +112,13 @@ impl<'a> Board {
         ]
     }
 
-    const fn tile_to_index(&self, tile: Tile) -> Option<usize> {
-        match tile {
-            Tile::Valid(r, c) if r < (self.size as u8) && c < (self.size as u8) => {
-                Some((r as usize) * self.size + c as usize)
-            }
-            Tile::Valid(_, _) | Tile::Edge1 | Tile::Edge2 | Tile::Invalid => None,
-        }
-    }
-
     pub fn get_tile(&self, tile: Tile) -> Option<PieceState> {
-        self.tile_to_index(tile)
+        tile.to_index(self.size)
             .and_then(|idx| self.board.get(idx).copied())
     }
 
     pub fn set_tile(&mut self, tile: Tile, s: PieceState) -> Result<(), Error> {
-        let idx = self.tile_to_index(tile).ok_or(Error::NotInRange)?;
+        let idx = tile.to_index(self.size).ok_or(Error::NotInRange)?;
         self.board[idx] = s;
         Ok(())
     }
@@ -157,25 +152,43 @@ impl std::fmt::Display for Board {
 }
 
 pub struct Iter<'a> {
-    idx: usize,
+    idx: isize,
     board: &'a Board,
+}
+
+impl<'a> Iter<'a> {
+    fn get(&self) -> (Tile, PieceState) {
+        let state = self
+            .board
+            .board
+            .get(self.idx as usize)
+            .copied()
+            // To panic or not to panic...
+            .unwrap_or(PieceState::Empty);
+        let tile = self.board.index_to_tile(self.idx as usize);
+        (tile, state)
+    }
+}
+
+impl<'a> DoubleEndedIterator for Iter<'a> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.idx <= -1 {
+            return None;
+        }
+        let (tile, state) = self.get();
+        self.idx -= 1;
+        Some((tile, state))
+    }
 }
 
 impl<'a> Iterator for Iter<'a> {
     type Item = (Tile, PieceState);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.idx == self.board.board.len() {
+        if self.idx as usize >= self.board.board.len() {
             return None;
         }
-        let state = self
-            .board
-            .board
-            .get(self.idx)
-            .copied()
-            // To panic or not to panic...
-            .unwrap_or(PieceState::Empty);
-        let tile = self.board.index_to_tile(self.idx);
+        let (tile, state) = self.get();
         self.idx += 1;
         Some((tile, state))
     }

@@ -2,6 +2,7 @@ use rustyline::{self, error::ReadlineError, Editor};
 
 mod ai;
 mod board;
+mod potential;
 mod state;
 mod tile;
 mod union_find;
@@ -192,7 +193,7 @@ fn main() -> Result<(), Error> {
                     Err(err) => eprintln!("{err}"),
                 }
             }
-            Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
+            Err(ReadlineError::Interrupted | ReadlineError::Eof) => break,
             Err(err) => {
                 eprintln!("Error: {err:?}");
                 break;
