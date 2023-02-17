@@ -92,17 +92,46 @@ impl<'a> PotEval<'a> {
         self.update[index] = false;
         self.bridge[index][edge.idx()] = 0.;
 
+        // Blocked, can't update
         if matches!(state,PieceState::Colour(c) if c == edge.colour().opponent()) {
             return false;
         }
 
         // BEWARE: it all goes to shit from here
+        let (block_score, min_potential) = self.calculate_potential(tile, edge);
+        let old_potential = self.potential[index][edge.idx()];
 
+        if matches!(state, PieceState::Colour(c) if c == edge.colour() && min_potential >= old_potential)
+            || matches!(state, PieceState::Empty if min_potential + DIFF >= old_potential)
+        {
+            return false;
+        }
+
+        self.potential[index][edge.idx()] = min_potential + DIFF;
+        self.update_neighbours(tile);
+
+        self.bridge[index][edge.idx()] += if self.is_inside_tile(tile) {
+            block_score as f32
+        } else {
+            -2.
+        };
+
+        if self.is_corner_tile(tile) {
+            self.bridge[index][edge.idx()] /= 2.;
+        }
+
+        self.bridge[index][edge.idx()] = self.bridge[index][edge.idx()].min(68.);
+
+        true
+    }
+
+    fn calculate_potential(&mut self, tile: Tile, edge: Edge) -> (i32, i32) {
         let mut block_score = 0;
         let mut bridge_weights = [0; 6];
         let mut min_potential = MAX_VALUE;
         let mut neighbours = [0; 6];
         let mut total_weight = 0.;
+
         for (idx, value) in self
             .board
             .neighbours(tile)
@@ -112,6 +141,7 @@ impl<'a> PotEval<'a> {
         {
             neighbours[idx] = value;
         }
+
         for idx in 0..6 {
             let value = neighbours[idx];
             if value >= MAX_VALUE && neighbours[(idx + 2) % 6] >= MAX_VALUE {
@@ -145,43 +175,25 @@ impl<'a> PotEval<'a> {
                 min_potential = neighbours[idx];
             }
         }
+
         for idx in 0..6 {
             if neighbours[idx] == min_potential {
                 total_weight += bridge_weights[idx] as f32;
             }
         }
 
-        min_potential = self.score_bridges(edge, index, total_weight, &neighbours, min_potential);
+        let min_potential = self.score_bridge(
+            edge,
+            tile.to_index(self.board.size).unwrap(),
+            total_weight,
+            &neighbours,
+            min_potential,
+        );
 
-        self.bridge[index][edge.idx()] += if self.is_inside_tile(tile) {
-            block_score as f32
-        } else {
-            -2.
-        };
-
-        if self.is_corner_tile(tile) {
-            self.bridge[index][edge.idx()] /= 2.;
-        }
-
-        self.bridge[index][edge.idx()] = f32::min(68., self.bridge[index][edge.idx()]);
-
-        if matches!(state,PieceState::Colour(c) if c == edge.colour()) {
-            if min_potential < self.potential[index][edge.idx()] {
-                self.potential[index][edge.idx()] = min_potential;
-                self.update_neighbours(tile);
-                return true;
-            }
-            return false;
-        } else if min_potential + DIFF < self.potential[index][edge.idx()] {
-            self.potential[index][edge.idx()] = min_potential + DIFF;
-            self.update_neighbours(tile);
-            return true;
-        }
-
-        false
+        (block_score, min_potential)
     }
 
-    fn score_bridges(
+    fn score_bridge(
         &mut self,
         edge: Edge,
         index: usize,
@@ -194,30 +206,30 @@ impl<'a> PotEval<'a> {
         } else {
             52.
         };
-
-        self.bridge[index][edge.idx()] = total_weight / 5.;
+        let mut bridge_score = total_weight / 5.;
         if (2. ..10.).contains(&total_weight) {
-            self.bridge[index][edge.idx()] = edge_bridge_score + total_weight - 2.;
+            bridge_score = edge_bridge_score + total_weight - 2.;
             min_potential -= 32;
         }
 
         if total_weight < 2. {
-            let mut closest_high_value = MAX_VALUE;
-            for value in neighbours {
-                if *value > min_potential && closest_high_value > *value {
-                    closest_high_value = *value;
+            if let Some(closest_high_value) = neighbours
+                .iter()
+                .filter(|&&value| value > min_potential)
+                .min()
+                .copied()
+            {
+                if closest_high_value <= min_potential + 104 {
+                    bridge_score =
+                        edge_bridge_score + (closest_high_value - min_potential) as f32 / 4.;
+                    min_potential -= 64;
                 }
+                min_potential += closest_high_value;
+                min_potential /= 2;
             }
-
-            if closest_high_value <= min_potential + 104 {
-                self.bridge[index][edge.idx()] =
-                    edge_bridge_score + (closest_high_value - min_potential) as f32 / 4.;
-                min_potential -= 64;
-            }
-            min_potential += closest_high_value;
-            min_potential /= 2;
         }
 
+        self.bridge[index][edge.idx()] = bridge_score;
         min_potential
     }
 
@@ -259,7 +271,8 @@ impl<'a> PotEval<'a> {
                     continue;
                 }
 
-                let mut mmp = ((i as f32 - 5.0).abs() + (j as f32 - 5.0).abs()).mul_add(ff, rand::thread_rng().gen::<f32>());
+                let mut mmp = ((i as f32 - 5.0).abs() + (j as f32 - 5.0).abs())
+                    .mul_add(ff, rand::thread_rng().gen::<f32>());
                 mmp += 8.0 * ((iq * (i as i32 - 5)) + (jq * (j as i32 - 5))) as f32
                     / (move_count + 1) as f32;
 
@@ -291,8 +304,8 @@ impl<'a> PotEval<'a> {
     }
 
     fn get_quadrant(&self) -> (i32, i32) {
-        let mut iq: i32 = 0;
-        let mut jq: i32 = 0;
+        let mut iq = 0;
+        let mut jq = 0;
         let size = self.board.size as i32;
         for i in 0..size {
             for j in 0..size {
@@ -302,15 +315,7 @@ impl<'a> PotEval<'a> {
                 }
             }
         }
-        (Self::sign(iq), Self::sign(jq))
-    }
-
-    const fn sign(x: i32) -> i32 {
-        match x {
-            0 => 0,
-            i32::MIN..=-1 => -1,
-            1..=i32::MAX => 1,
-        }
+        (iq.signum(), jq.signum())
     }
 
     fn init_tile_potential(&mut self) {
