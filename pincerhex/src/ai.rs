@@ -126,7 +126,9 @@ impl HexBot {
             }
             SwapRole::Swap => {
                 if self.state.should_swap() {
-                    self.state.swap_pieces()?;
+                    // self.state.swap_pieces()?;
+                    self.swap()?;
+                    // self.colour = self.colour.opponent();
                     Ok(Move::Swap)
                 } else {
                     Ok(Move::Move(self.regular_move()))
@@ -151,7 +153,8 @@ impl HexBot {
     }
 
     pub fn swap(&mut self) -> Result<(), BotError> {
-        self.state.swap_pieces()?;
+        self.colour = self.colour.opponent();
+        // self.state.swap_pieces()?;
         Ok(())
     }
 }
