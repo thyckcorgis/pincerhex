@@ -101,11 +101,9 @@ impl HexBot {
     }
 
     pub fn make_move(&mut self) -> Result<Move, BotError> {
-        dbg!(self.swap_state);
         if let (Some(s), true) = (self.swap_state, SWAP_RULE) {
             let mv = self.handle_swap(s)?;
             self.swap_state = None;
-            self.move_count += 1;
             Ok(mv)
         } else {
             Ok(Move::Move(self.regular_move()))
@@ -124,6 +122,7 @@ impl HexBot {
                 let mv = Tile::Valid(i, j);
                 self.state
                     .place_piece(mv, PieceState::Colour(self.colour))?;
+                self.move_count += 1;
                 Ok(Move::Move(mv))
             }
             SwapRole::Swap => {

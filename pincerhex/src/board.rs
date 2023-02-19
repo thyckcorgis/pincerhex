@@ -27,6 +27,7 @@ impl<'a> Board {
         self.get_tile(Tile::Valid(r, c))
     }
 
+    #[allow(dead_code)]
     pub fn swap_pieces(&mut self) -> Result<(), Error> {
         let mut to_swap: HashSet<Tile> = HashSet::new();
 

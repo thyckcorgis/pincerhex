@@ -37,13 +37,13 @@ pub struct PotEval<'a> {
     update: Vec<bool>,
 }
 
-const INIT_POTENTIAL: i32 = 20000;
+const INIT_POTENTIAL: i32 = 20_000;
 const DEFAULT_POTENTIAL: i32 = 128;
 const DIFF: i32 = 140;
-const MAX_VALUE: i32 = 30000;
+const MAX_VALUE: i32 = 30_000;
 const ROUNDS: i32 = 12;
 
-const EDGES: [Edge; 4] = [Edge::Top, Edge::Bottom, Edge::Left, Edge::Right];
+const EDGES: [Edge; 4] = [Edge::Left, Edge::Right, Edge::Top, Edge::Bottom];
 
 impl<'a> PotEval<'a> {
     pub fn new(board: &'a Board, active: Colour) -> Self {
@@ -65,6 +65,7 @@ impl<'a> PotEval<'a> {
 
     pub fn evaluate(&mut self) -> &mut Self {
         self.init_tile_potential();
+        // dbg!(&self.potential);
         for i in EDGES {
             self.evaluate_side(i);
         }
@@ -74,55 +75,66 @@ impl<'a> PotEval<'a> {
     fn evaluate_side(&mut self, edge: Edge) {
         self.reset_update();
         for _ in 0..ROUNDS {
-            let mut set = false;
+            let mut set = 0;
             for (tile, state) in self.board.iter() {
-                set = self.set_pot(tile, state, edge) || set;
+                if self.update[tile.to_index(self.board.size).unwrap()] {
+                    set += self.set_pot(tile, state, edge);
+                }
             }
             for (tile, state) in self.board.iter().rev() {
-                set = self.set_pot(tile, state, edge) || set;
+                if self.update[tile.to_index(self.board.size).unwrap()] {
+                    set += self.set_pot(tile, state, edge);
+                }
             }
-            if !set {
+
+            if set == 0 {
                 break;
             }
         }
     }
 
-    fn set_pot(&mut self, tile: Tile, state: PieceState, edge: Edge) -> bool {
+    fn set_pot(&mut self, tile: Tile, state: PieceState, edge: Edge) -> i32 {
         let index = tile.to_index(self.board.size).unwrap();
         self.update[index] = false;
         self.bridge[index][edge.idx()] = 0.;
 
         // Blocked, can't update
         if matches!(state,PieceState::Colour(c) if c == edge.colour().opponent()) {
-            return false;
+            return 0;
         }
 
         // BEWARE: it all goes to shit from here
         let (block_score, min_potential) = self.calculate_potential(tile, edge);
-        let old_potential = self.potential[index][edge.idx()];
 
-        if matches!(state, PieceState::Colour(c) if c == edge.colour() && min_potential >= old_potential)
-            || matches!(state, PieceState::Empty if min_potential + DIFF >= old_potential)
-        {
-            return false;
-        }
-
-        self.potential[index][edge.idx()] = min_potential + DIFF;
-        self.update_neighbours(tile);
-
-        self.bridge[index][edge.idx()] += if self.is_inside_tile(tile) {
-            block_score as f32
+        if self.is_inside_tile(tile) {
+            self.bridge[index][edge.idx()] += block_score as f32;
         } else {
-            -2.
-        };
+            self.bridge[index][edge.idx()] -= 2.;
+        }
 
         if self.is_corner_tile(tile) {
             self.bridge[index][edge.idx()] /= 2.;
         }
 
-        self.bridge[index][edge.idx()] = self.bridge[index][edge.idx()].min(68.);
+        self.bridge[index][edge.idx()] = f32::min(self.bridge[index][edge.idx()], 68.);
 
-        true
+        match self.board.get_tile(tile) {
+            Some(PieceState::Colour(c)) if c == edge.colour() => {
+                if min_potential < self.potential[index][edge.idx()] {
+                    self.potential[index][edge.idx()] = min_potential;
+                    self.update_neighbours(tile);
+                    1
+                } else {
+                    0
+                }
+            }
+            Some(_) | None if min_potential + DIFF < self.potential[index][edge.idx()] => {
+                self.potential[index][edge.idx()] = min_potential + DIFF;
+                self.update_neighbours(tile);
+                1
+            }
+            Some(_) | None => 0,
+        }
     }
 
     fn calculate_potential(&mut self, tile: Tile, edge: Edge) -> (i32, i32) {
@@ -213,20 +225,19 @@ impl<'a> PotEval<'a> {
         }
 
         if total_weight < 2. {
-            if let Some(closest_high_value) = neighbours
+            let closest_high_value = neighbours
                 .iter()
                 .filter(|&&value| value > min_potential)
                 .min()
                 .copied()
-            {
-                if closest_high_value <= min_potential + 104 {
-                    bridge_score =
-                        edge_bridge_score + (closest_high_value - min_potential) as f32 / 4.;
-                    min_potential -= 64;
-                }
-                min_potential += closest_high_value;
-                min_potential /= 2;
+                .unwrap_or(MAX_VALUE);
+
+            if closest_high_value <= min_potential + 104 {
+                bridge_score = edge_bridge_score - (closest_high_value - min_potential) as f32 / 4.;
+                min_potential -= 64;
             }
+            min_potential += closest_high_value;
+            min_potential /= 2;
         }
 
         self.bridge[index][edge.idx()] = bridge_score;
@@ -259,7 +270,7 @@ impl<'a> PotEval<'a> {
 
     pub fn get_best_move(&self, move_count: u32) -> Tile {
         let mut ff: f32 = 0.0;
-        let mut mm: f32 = 20000.0;
+        let mut mm: f32 = f32::MAX;
         let (iq, jq) = self.get_quadrant();
         let mut best_move: Option<Tile> = None;
 
@@ -268,9 +279,11 @@ impl<'a> PotEval<'a> {
         }
 
         let mut moves = std::collections::HashMap::new();
+        dbg!(&self.bridge);
+        dbg!(&self.potential);
         for i in 0..self.board.size {
             for j in 0..self.board.size {
-                if self.board.get(i, j) == Some(PieceState::Empty) {
+                if self.board.get(i, j) != Some(PieceState::Empty) {
                     continue;
                 }
 
@@ -295,7 +308,6 @@ impl<'a> PotEval<'a> {
 
                 moves.insert(tile, mmp);
 
-                dbg!(mmp, mm);
                 if mmp < mm {
                     mm = mmp;
                     best_move = Some(tile);
@@ -312,7 +324,7 @@ impl<'a> PotEval<'a> {
         let size = self.board.size;
         for i in 0..size {
             for j in 0..size {
-                if self.board.get(i, j) == Some(PieceState::Empty) {
+                if self.board.get(i, j) != Some(PieceState::Empty) {
                     iq += 2 * i32::from(i) + 1 - i32::from(size);
                     jq += 2 * i32::from(j) + 1 - i32::from(size);
                 }
@@ -321,21 +333,30 @@ impl<'a> PotEval<'a> {
         (iq.signum() as i8, jq.signum() as i8)
     }
 
+    fn get_edges(&self, i: i8) -> [(Edge, Tile); 4] {
+        [
+            (Edge::Top, Tile::Valid(0, i)),
+            (Edge::Bottom, Tile::Valid(self.board.size - 1, i)),
+            (Edge::Left, Tile::Valid(i, 0)),
+            (Edge::Right, Tile::Valid(i, self.board.size - 1)),
+        ]
+    }
+
     fn init_tile_potential(&mut self) {
         let size = self.board.size;
-        self.board.iter().for_each(|t| {
-            let index = t.0.to_index(size).expect("valid index");
-            for i in EDGES {
-                match t.1 {
-                    PieceState::Colour(c) if c == i.colour() => {
-                        self.potential[index][i.idx()] = 0;
+        for i in 0..size {
+            for (e, j) in self.get_edges(i) {
+                let index = j.to_index(self.board.size).unwrap();
+                match self.board.get_tile(j) {
+                    Some(PieceState::Colour(c)) if c == e.colour() => {
+                        self.potential[index][e.idx()] = 0;
                     }
                     _ => {
-                        self.potential[index][i.idx()] = DEFAULT_POTENTIAL;
+                        self.potential[index][e.idx()] = DEFAULT_POTENTIAL;
                     }
                 }
             }
-        });
+        }
     }
 
     const fn is_corner_tile(&self, tile: Tile) -> bool {

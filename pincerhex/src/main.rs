@@ -114,12 +114,10 @@ fn process_command(
             Ok(HexBotOutput::Move(mv))
         }
         "o" | "seto" => {
-            dbg!(bot.colour().opponent());
             bot.set_tile(args.first(), PieceState::Colour(bot.colour().opponent()))?;
             Ok(HexBotOutput::Empty)
         }
         "y" | "sety" => {
-            dbg!(bot.colour());
             bot.set_tile(args.first(), PieceState::Colour(bot.colour()))?;
             Ok(HexBotOutput::Empty)
         }

@@ -61,6 +61,7 @@ impl State {
         false
     }
 
+    #[allow(dead_code)]
     pub fn swap_pieces(&mut self) -> Result<(), Error> {
         self.board.swap_pieces()?;
         Ok(())
