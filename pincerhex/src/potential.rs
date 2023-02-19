@@ -41,7 +41,7 @@ const INIT_POTENTIAL: i32 = 20_000;
 const DEFAULT_POTENTIAL: i32 = 128;
 const DIFF: i32 = 140;
 const MAX_VALUE: i32 = 30_000;
-const ROUNDS: i32 = 12;
+const ROUNDS: i32 = 1000;
 
 const EDGES: [Edge; 4] = [Edge::Left, Edge::Right, Edge::Top, Edge::Bottom];
 
@@ -74,7 +74,7 @@ impl<'a> PotEval<'a> {
 
     fn evaluate_side(&mut self, edge: Edge) {
         self.reset_update();
-        for _ in 0..ROUNDS {
+        for i in 1..ROUNDS {
             let mut set = 0;
             for (tile, state) in self.board.iter() {
                 if self.update[tile.to_index(self.board.size).unwrap()] {
@@ -88,9 +88,11 @@ impl<'a> PotEval<'a> {
             }
 
             if set == 0 {
+                dbg!(i);
                 break;
             }
         }
+        dbg!(ROUNDS);
     }
 
     fn set_pot(&mut self, tile: Tile, state: PieceState, edge: Edge) -> i32 {
