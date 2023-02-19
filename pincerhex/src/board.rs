@@ -18,7 +18,7 @@ pub enum Error {
 impl<'a> Board {
     pub fn new(size: i8) -> Self {
         Self {
-            size: size as i8,
+            size,
             board: vec![PieceState::Empty; (size as usize).pow(2)],
         }
     }
@@ -136,7 +136,7 @@ impl std::fmt::Display for Board {
     /// ------------------
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for r in 0..(self.size as usize) {
-            write!(f, "{}", " ".repeat(r.try_into().unwrap()))?;
+            write!(f, "{}", " ".repeat(r))?;
 
             for c in 0..(self.size as usize) {
                 if let Some(c) = self.get_tile(Tile::Valid(r as i8, c as i8)) {

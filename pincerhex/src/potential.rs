@@ -76,10 +76,10 @@ impl<'a> PotEval<'a> {
         for _ in 0..ROUNDS {
             let mut set = false;
             for (tile, state) in self.board.iter() {
-                set |= self.set_pot(tile, state, edge);
+                set = self.set_pot(tile, state, edge) || set;
             }
             for (tile, state) in self.board.iter().rev() {
-                set |= self.set_pot(tile, state, edge);
+                set = self.set_pot(tile, state, edge) || set;
             }
             if !set {
                 break;
@@ -251,10 +251,9 @@ impl<'a> PotEval<'a> {
     }
 
     fn get_potential(&self, r: i8, c: i8, edge: Edge) -> i32 {
-        let idx = match Tile::Valid(r, c).to_index(self.board.size) {
-            Some(i) => i,
-            None => panic!("wtf {} {}", r, c),
-        };
+        let idx = Tile::Valid(r, c)
+            .to_index(self.board.size)
+            .map_or_else(|| panic!("wtf {r} {c}"), |i| i);
         self.potential[idx][edge.idx()]
     }
 
@@ -275,9 +274,9 @@ impl<'a> PotEval<'a> {
                     continue;
                 }
 
-                let mut mmp = ((i as f32 - 5.0).abs() + (j as f32 - 5.0).abs())
+                let mut mmp = ((f32::from(i) - 5.0).abs() + (f32::from(j) - 5.0).abs())
                     .mul_add(ff, rand::thread_rng().gen::<f32>());
-                mmp += 8.0 * ((iq * (i - 5)) + (jq * (j - 5))) as f32 / (move_count + 1) as f32;
+                mmp += 8.0 * f32::from((iq * (i - 5)) + (jq * (j - 5))) / (move_count + 1) as f32;
 
                 let tile = Tile::Valid(i, j);
                 let index = tile.to_index(self.board.size).unwrap();
@@ -314,8 +313,8 @@ impl<'a> PotEval<'a> {
         for i in 0..size {
             for j in 0..size {
                 if self.board.get(i, j) == Some(PieceState::Empty) {
-                    iq += 2 * i as i32 + 1 - size as i32;
-                    jq += 2 * j as i32 + 1 - size as i32;
+                    iq += 2 * i32::from(i) + 1 - i32::from(size);
+                    jq += 2 * i32::from(j) + 1 - i32::from(size);
                 }
             }
         }
