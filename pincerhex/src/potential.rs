@@ -47,7 +47,7 @@ const EDGES: [Edge; 4] = [Edge::Top, Edge::Bottom, Edge::Left, Edge::Right];
 
 impl<'a> PotEval<'a> {
     pub fn new(board: &'a Board, active: Colour) -> Self {
-        let size = board.size;
+        let size = board.size as usize;
         Self {
             board,
             active,
@@ -244,14 +244,18 @@ impl<'a> PotEval<'a> {
     fn pot_val(&self, tile: Option<(Tile, PieceState)>, edge: Edge) -> i32 {
         match tile {
             Some((_, PieceState::Colour(other))) if other == edge.colour().opponent() => MAX_VALUE, // Blocked
-            None => MAX_VALUE, // Border
-            Some((t, PieceState::Empty)) => self.get_potential(t, edge),
-            Some((t, _)) => self.get_potential(t, edge) - MAX_VALUE,
+            Some((Tile::Valid(r, c), PieceState::Empty)) => self.get_potential(r, c, edge),
+            Some((Tile::Valid(r, c), _)) => self.get_potential(r, c, edge) - MAX_VALUE,
+            Some((_, _)) | None => MAX_VALUE, // Border
         }
     }
 
-    fn get_potential(&self, tile: Tile, edge: Edge) -> i32 {
-        self.potential[tile.to_index(self.board.size).unwrap()][edge.idx()]
+    fn get_potential(&self, r: i8, c: i8, edge: Edge) -> i32 {
+        let idx = match Tile::Valid(r, c).to_index(self.board.size) {
+            Some(i) => i,
+            None => panic!("wtf {} {}", r, c),
+        };
+        self.potential[idx][edge.idx()]
     }
 
     pub fn get_best_move(&self, move_count: u32) -> Tile {
@@ -267,16 +271,15 @@ impl<'a> PotEval<'a> {
         let mut moves = std::collections::HashMap::new();
         for i in 0..self.board.size {
             for j in 0..self.board.size {
-                if self.board.get(i as u8, j as u8) == Some(PieceState::Empty) {
+                if self.board.get(i, j) == Some(PieceState::Empty) {
                     continue;
                 }
 
                 let mut mmp = ((i as f32 - 5.0).abs() + (j as f32 - 5.0).abs())
                     .mul_add(ff, rand::thread_rng().gen::<f32>());
-                mmp += 8.0 * ((iq * (i as i32 - 5)) + (jq * (j as i32 - 5))) as f32
-                    / (move_count + 1) as f32;
+                mmp += 8.0 * ((iq * (i - 5)) + (jq * (j - 5))) as f32 / (move_count + 1) as f32;
 
-                let tile = Tile::Valid(i as u8, j as u8);
+                let tile = Tile::Valid(i, j);
                 let index = tile.to_index(self.board.size).unwrap();
 
                 for val in &self.bridge[index] {
@@ -293,6 +296,7 @@ impl<'a> PotEval<'a> {
 
                 moves.insert(tile, mmp);
 
+                dbg!(mmp, mm);
                 if mmp < mm {
                     mm = mmp;
                     best_move = Some(tile);
@@ -300,22 +304,22 @@ impl<'a> PotEval<'a> {
             }
         }
 
-        best_move.unwrap()
+        best_move.expect("finding the best move")
     }
 
-    fn get_quadrant(&self) -> (i32, i32) {
-        let mut iq = 0;
-        let mut jq = 0;
-        let size = self.board.size as i32;
+    fn get_quadrant(&self) -> (i8, i8) {
+        let mut iq: i32 = 0;
+        let mut jq: i32 = 0;
+        let size = self.board.size;
         for i in 0..size {
             for j in 0..size {
-                if self.board.get(i as u8, j as u8) == Some(PieceState::Empty) {
-                    iq += 2 * i + 1 - size;
-                    jq += 2 * j + 1 - size;
+                if self.board.get(i, j) == Some(PieceState::Empty) {
+                    iq += 2 * i as i32 + 1 - size as i32;
+                    jq += 2 * j as i32 + 1 - size as i32;
                 }
             }
         }
-        (iq.signum(), jq.signum())
+        (iq.signum() as i8, jq.signum() as i8)
     }
 
     fn init_tile_potential(&mut self) {
@@ -338,8 +342,7 @@ impl<'a> PotEval<'a> {
     const fn is_corner_tile(&self, tile: Tile) -> bool {
         match tile {
             Tile::Valid(r, c)
-                if ((r as usize) == 0 || (r as usize) == self.board.size - 1)
-                    && ((c as usize) == 0 || (c as usize) == self.board.size - 1) =>
+                if (r == 0 || r == self.board.size - 1) && (c == 0 || c == self.board.size - 1) =>
             {
                 true
             }
@@ -350,7 +353,7 @@ impl<'a> PotEval<'a> {
     const fn is_inside_tile(&self, tile: Tile) -> bool {
         match tile {
             Tile::Valid(r, c)
-                if (r as usize) < self.board.size - 1 && (c as usize) < self.board.size - 1 =>
+                if r > 0 && r < self.board.size - 1 && c > 0 && c < self.board.size - 1 =>
             {
                 true
             }

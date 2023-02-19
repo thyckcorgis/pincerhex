@@ -5,7 +5,7 @@ use crate::Winner;
 use rand::Rng;
 
 pub struct State {
-    size: u8,
+    size: i8,
     board: Board,
     to_play: Colour,
     groups: Groups,
@@ -18,7 +18,7 @@ pub enum Error {
     Board(board::Error),
 }
 
-pub const DEFAULT_SIZE: u8 = 10;
+pub const DEFAULT_SIZE: i8 = 10;
 
 impl From<board::Error> for Error {
     fn from(value: board::Error) -> Self {
@@ -27,7 +27,7 @@ impl From<board::Error> for Error {
 }
 
 impl State {
-    pub fn new(size: u8) -> Self {
+    pub fn new(size: i8) -> Self {
         Self {
             size,
             board: Board::new(size),
@@ -111,7 +111,7 @@ impl State {
 
     fn replace_piece(&mut self, t: Tile, old: Colour, new: PieceState) -> Result<(), Error> {
         self.board.set_tile(t, new)?;
-        self.groups.0[old.group_idx()] = UnionFind::new(self.size as usize);
+        self.groups.0[old.group_idx()] = UnionFind::new(self.size.try_into().unwrap());
         for i in self.board.iter() {
             if matches!(i.1, PieceState::Colour(c) if c == old) {
                 self.groups.join(i.0, old, &self.board);
@@ -165,7 +165,7 @@ impl Groups {
         if t.edge(c) == 0 {
             self.0[c.group_idx()].union(Tile::Edge1, t);
         }
-        if t.edge(c) == board.size as u8 - 1 {
+        if t.edge(c) == board.size - 1 {
             self.0[c.group_idx()].union(t, Tile::Edge2);
         }
 

@@ -6,7 +6,7 @@ use crate::tile::{Colour, PieceState, Tile};
 
 #[derive(Debug)]
 pub struct Board {
-    pub size: usize,
+    pub size: i8,
     board: Vec<PieceState>,
 }
 
@@ -16,14 +16,14 @@ pub enum Error {
 }
 
 impl<'a> Board {
-    pub fn new(size: u8) -> Self {
+    pub fn new(size: i8) -> Self {
         Self {
-            size: size as usize,
+            size: size as i8,
             board: vec![PieceState::Empty; (size as usize).pow(2)],
         }
     }
 
-    pub fn get(&self, r: u8, c: u8) -> Option<PieceState> {
+    pub fn get(&self, r: i8, c: i8) -> Option<PieceState> {
         self.get_tile(Tile::Valid(r, c))
     }
 
@@ -72,8 +72,8 @@ impl<'a> Board {
             })
             .collect();
 
-        for i in (1..=self.size).rev() {
-            chars.insert(i * self.size, '|');
+        for i in (1..=self.size as usize).rev() {
+            chars.insert(i * (self.size as usize), '|');
         }
 
         chars.into_iter().collect()
@@ -81,7 +81,7 @@ impl<'a> Board {
 
     pub fn neighbour(&self, tile: Tile, row: i8, col: i8) -> Option<(Tile, PieceState)> {
         let n = tile.neighbour(row, col);
-        tile.to_index(self.size)
+        n.to_index(self.size)
             .map(|idx| self.board[idx])
             .map(|state| (n, state))
     }
@@ -97,7 +97,10 @@ impl<'a> Board {
         if idx >= self.board.len() {
             Tile::Invalid
         } else {
-            Tile::Valid((idx / self.size) as u8, (idx % self.size) as u8)
+            Tile::Valid(
+                (idx / self.size as usize) as i8,
+                (idx % self.size as usize) as i8,
+            )
         }
     }
 
@@ -132,11 +135,11 @@ impl std::fmt::Display for Board {
     ///    W . W B
     /// ------------------
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for r in 0..self.size {
-            write!(f, "{}", " ".repeat(r))?;
+        for r in 0..(self.size as usize) {
+            write!(f, "{}", " ".repeat(r.try_into().unwrap()))?;
 
-            for c in 0..self.size {
-                if let Some(c) = self.get_tile(Tile::Valid(r as u8, c as u8)) {
+            for c in 0..(self.size as usize) {
+                if let Some(c) = self.get_tile(Tile::Valid(r as i8, c as i8)) {
                     match c {
                         PieceState::Colour(Colour::Black) => write!(f, "B ")?,
                         PieceState::Colour(Colour::White) => write!(f, "W ")?,
