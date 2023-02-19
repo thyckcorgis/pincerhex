@@ -10,12 +10,12 @@ use crate::{
 
 /// Whether or not to play with the swap rule
 /// Should probably be an environment variable
-pub const SWAP_RULE: bool = false;
+pub const SWAP_RULE: bool = true;
 
 pub struct HexBot {
     colour: Colour,
     state: State,
-    size: u8,
+    size: i8,
     #[allow(dead_code)]
     allow_invalid: bool,
     swap_state: Option<SwapRole>,
@@ -85,9 +85,10 @@ impl HexBot {
             .and_then(|mv| self.place_piece(mv, state))
     }
 
-    pub fn init_board(&mut self, size: u8) {
+    pub fn init_board(&mut self, size: i8) {
         self.state = State::new(size);
         self.size = size;
+        self.swap_state = Some(SwapRole::from(self.colour));
         self.move_count = 0;
     }
 
@@ -100,6 +101,7 @@ impl HexBot {
     }
 
     pub fn make_move(&mut self) -> Result<Move, BotError> {
+        dbg!(self.swap_state);
         if let (Some(s), true) = (self.swap_state, SWAP_RULE) {
             let mv = self.handle_swap(s)?;
             self.swap_state = None;

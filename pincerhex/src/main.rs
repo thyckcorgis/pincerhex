@@ -102,7 +102,7 @@ fn process_command(
         "i" | "init_board" => {
             let size = args
                 .first()
-                .and_then(|s| s.parse::<u8>().ok())
+                .and_then(|s| s.parse::<i8>().ok())
                 .ok_or(REPLError::Usage(Usage::InitBoard))?;
             bot.init_board(size);
             Ok(HexBotOutput::Empty)
@@ -114,10 +114,12 @@ fn process_command(
             Ok(HexBotOutput::Move(mv))
         }
         "o" | "seto" => {
+            dbg!(bot.colour().opponent());
             bot.set_tile(args.first(), PieceState::Colour(bot.colour().opponent()))?;
             Ok(HexBotOutput::Empty)
         }
         "y" | "sety" => {
+            dbg!(bot.colour());
             bot.set_tile(args.first(), PieceState::Colour(bot.colour()))?;
             Ok(HexBotOutput::Empty)
         }

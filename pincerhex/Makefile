@@ -1,3 +1,6 @@
-pincerhex:
+EXE=pincerhex
+
+all:
 	cargo build --release
-	mv ./target/release/$@ ./$@
+	rm -f ./$(EXE)
+	mv -f ./target/release/$(EXE) ./$(EXE)
