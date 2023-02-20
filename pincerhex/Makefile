@@ -4,3 +4,8 @@ all:
 	cargo build --release
 	rm -f ./$(EXE)
 	mv -f ./target/release/$(EXE) ./$(EXE)
+
+explore:
+	cargo build --release --features explore
+	rm -f ./$(EXE)_exp
+	mv -f ./target/release/$(EXE) ./$(EXE)_exp

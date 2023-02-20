@@ -54,6 +54,14 @@ impl Colour {
             Self::White => 1,
         }
     }
+
+    pub const fn val(self) -> i8 {
+        match self {
+            Self::Black => -1,
+            Self::White => 1,
+        }
+    }
+
     pub const fn opponent(self) -> Self {
         match self {
             Self::Black => Self::White,

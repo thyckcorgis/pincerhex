@@ -2,6 +2,7 @@ use rustyline::{self, error::ReadlineError, Editor};
 
 mod ai;
 mod board;
+mod explore;
 mod potential;
 mod state;
 mod tile;

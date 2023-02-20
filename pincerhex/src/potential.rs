@@ -1,5 +1,6 @@
 use crate::{
     board::Board,
+    explore::explore_other_moves,
     tile::{Colour, PieceState, Tile},
 };
 use rand::Rng;
@@ -269,7 +270,7 @@ impl<'a> PotEval<'a> {
         self.potential[idx][edge.idx()]
     }
 
-    pub fn get_best_move(&self, move_count: u32) -> Tile {
+    pub fn get_best_move(&self, move_count: u32, explore: bool) -> Tile {
         let mut ff: f32 = 0.0;
         let mut mm: f32 = f32::MAX;
         let (iq, jq) = self.get_quadrant();
@@ -314,7 +315,11 @@ impl<'a> PotEval<'a> {
             }
         }
 
-        best_move.expect("finding the best move")
+        if explore {
+            explore_other_moves(self.board, moves, best_move.expect("finding the best move"))
+        } else {
+            best_move.expect("finding the best move")
+        }
     }
 
     fn get_quadrant(&self) -> (i8, i8) {
