@@ -11,3 +11,4 @@ rustyline = "10.1.1"
 
 [features]
 explore = []
+switcheroo = []

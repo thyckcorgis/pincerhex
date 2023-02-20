@@ -9,3 +9,9 @@ explore:
 	cargo build --release --features explore
 	rm -f ./$(EXE)_exp
 	mv -f ./target/release/$(EXE) ./$(EXE)_exp
+
+switcheroo:
+	cargo build --release --features switcheroo
+	rm -f ./$(EXE)_switcheroo
+	mv -f ./target/release/$(EXE) ./$(EXE)_switcheroo
+	cd ../hexterminator && $(MAKE) && cp -f hexbot ../pincerhex/hexterminator

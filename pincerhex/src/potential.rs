@@ -1,9 +1,11 @@
 use crate::{
     board::Board,
-    explore::explore_other_moves,
     tile::{Colour, PieceState, Tile},
 };
 use rand::Rng;
+
+#[cfg(feature = "explore")]
+use crate::explore::explore_other_moves;
 
 #[derive(Clone, Copy)]
 enum Edge {
@@ -270,7 +272,7 @@ impl<'a> PotEval<'a> {
         self.potential[idx][edge.idx()]
     }
 
-    pub fn get_best_move(&self, move_count: u32, explore: bool) -> Tile {
+    pub fn get_best_move(&self, move_count: u32) -> Tile {
         let mut ff: f32 = 0.0;
         let mut mm: f32 = f32::MAX;
         let (iq, jq) = self.get_quadrant();
@@ -315,11 +317,10 @@ impl<'a> PotEval<'a> {
             }
         }
 
-        if explore {
-            explore_other_moves(self.board, moves, best_move.expect("finding the best move"))
-        } else {
-            best_move.expect("finding the best move")
-        }
+        #[cfg(feature = "explore")]
+        return explore_other_moves(self.board, moves, best_move.expect("finding the best move"));
+        #[cfg(not(feature = "explore"))]
+        return best_move.expect("finding the best move");
     }
 
     fn get_quadrant(&self) -> (i8, i8) {

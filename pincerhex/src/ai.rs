@@ -8,12 +8,6 @@ use crate::{
     Winner,
 };
 
-#[cfg(not(feature = "explore"))]
-const EXPLORE: bool = false;
-
-#[cfg(feature = "explore")]
-const EXPLORE: bool = true;
-
 /// Whether or not to play with the swap rule
 /// Should probably be an environment variable
 pub const SWAP_RULE: bool = true;
@@ -147,7 +141,7 @@ impl HexBot {
     fn regular_move(&mut self) -> Tile {
         let mv = PotEval::new(self.state.get_board(), self.colour)
             .evaluate()
-            .get_best_move(self.move_count, EXPLORE);
+            .get_best_move(self.move_count);
 
         self.place_piece(mv, PieceState::Colour(self.colour))
             .expect("valid move");

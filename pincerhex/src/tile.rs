@@ -55,6 +55,7 @@ impl Colour {
         }
     }
 
+    #[cfg(feature = "explore")]
     pub const fn val(self) -> i8 {
         match self {
             Self::Black => -1,
