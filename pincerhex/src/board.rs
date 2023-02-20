@@ -107,12 +107,12 @@ impl<'a> Board {
 
     pub fn neighbours(&self, tile: Tile) -> [Option<(Tile, PieceState)>; 6] {
         [
-            self.neighbour(tile, 1, 0),
             self.neighbour(tile, 0, 1),
-            self.neighbour(tile, -1, 1),
-            self.neighbour(tile, -1, 0),
-            self.neighbour(tile, 0, -1),
+            self.neighbour(tile, 1, 0),
             self.neighbour(tile, 1, -1),
+            self.neighbour(tile, 0, -1),
+            self.neighbour(tile, -1, 0),
+            self.neighbour(tile, -1, 1),
         ]
     }
 

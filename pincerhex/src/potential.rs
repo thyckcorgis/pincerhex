@@ -74,7 +74,7 @@ impl<'a> PotEval<'a> {
 
     fn evaluate_side(&mut self, edge: Edge) {
         self.reset_update();
-        for i in 1..ROUNDS {
+        for _i in 1..ROUNDS {
             let mut set = 0;
             for (tile, state) in self.board.iter() {
                 if self.update[tile.to_index(self.board.size).unwrap()] {
@@ -88,11 +88,9 @@ impl<'a> PotEval<'a> {
             }
 
             if set == 0 {
-                dbg!(i);
                 break;
             }
         }
-        dbg!(ROUNDS);
     }
 
     fn set_pot(&mut self, tile: Tile, state: PieceState, edge: Edge) -> i32 {
@@ -144,7 +142,6 @@ impl<'a> PotEval<'a> {
         let mut bridge_weights = [0; 6];
         let mut min_potential = MAX_VALUE;
         let mut neighbours = [0; 6];
-        let mut total_weight = 0.;
 
         for (idx, value) in self
             .board
@@ -190,16 +187,10 @@ impl<'a> PotEval<'a> {
             }
         }
 
-        for idx in 0..6 {
-            if neighbours[idx] == min_potential {
-                total_weight += bridge_weights[idx] as f32;
-            }
-        }
-
         let min_potential = self.score_bridge(
             edge,
             tile.to_index(self.board.size).unwrap(),
-            total_weight,
+            &bridge_weights,
             &neighbours,
             min_potential,
         );
@@ -211,10 +202,17 @@ impl<'a> PotEval<'a> {
         &mut self,
         edge: Edge,
         index: usize,
-        total_weight: f32,
+        bridge_weights: &[i32; 6],
         neighbours: &[i32; 6],
         mut min_potential: i32,
     ) -> i32 {
+        let mut total_weight = 0.;
+        for idx in 0..6 {
+            if neighbours[idx] == min_potential {
+                total_weight += bridge_weights[idx] as f32;
+            }
+        }
+
         let edge_bridge_score = if edge.colour() == self.active {
             66.
         } else {
@@ -227,12 +225,13 @@ impl<'a> PotEval<'a> {
         }
 
         if total_weight < 2. {
-            let closest_high_value = neighbours
-                .iter()
-                .filter(|&&value| value > min_potential)
-                .min()
-                .copied()
-                .unwrap_or(MAX_VALUE);
+            let mut closest_high_value = MAX_VALUE;
+            for idx in 0..6 {
+                let val = neighbours[idx];
+                if val > min_potential && closest_high_value > val {
+                    closest_high_value = val;
+                }
+            }
 
             if closest_high_value <= min_potential + 104 {
                 bridge_score = edge_bridge_score - (closest_high_value - min_potential) as f32 / 4.;
@@ -281,8 +280,6 @@ impl<'a> PotEval<'a> {
         }
 
         let mut moves = std::collections::HashMap::new();
-        dbg!(&self.bridge);
-        dbg!(&self.potential);
         for i in 0..self.board.size {
             for j in 0..self.board.size {
                 if self.board.get(i, j) != Some(PieceState::Empty) {

@@ -20,6 +20,8 @@ pub enum Error {
 
 pub const DEFAULT_SIZE: i8 = 10;
 
+const NO_SWAP_CHANCE: i32 = 2;
+
 impl From<board::Error> for Error {
     fn from(value: board::Error) -> Self {
         Self::Board(value)
@@ -47,7 +49,7 @@ impl State {
                     Tile::Valid(r, c)
                         if ((r + c < 2) || (r + c > 2 * self.size - 4))
                             || (((r + c == 2) || (r + c == 2 * self.size - 4))
-                                && rng.gen_range(0..2) == 0) =>
+                                && rng.gen_range(0..NO_SWAP_CHANCE) == 0) =>
                     {
                         return false;
                     }
