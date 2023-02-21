@@ -19,7 +19,7 @@ pub struct HexBot {
     #[allow(dead_code)]
     allow_invalid: bool,
     swap_state: Option<SwapRole>,
-    move_count: u32,
+    move_count: u16,
     #[allow(dead_code)]
     params: MCTSParams,
 }
@@ -130,9 +130,7 @@ impl HexBot {
             }
             SwapRole::Swap => {
                 if self.state.should_swap() {
-                    // self.state.swap_pieces()?;
                     self.swap()?;
-                    // self.colour = self.colour.opponent();
                     Ok(Move::Swap)
                 } else {
                     Ok(Move::Move(self.regular_move()))
@@ -158,7 +156,6 @@ impl HexBot {
 
     pub fn swap(&mut self) -> Result<(), BotError> {
         self.colour = self.colour.opponent();
-        // self.state.swap_pieces()?;
         Ok(())
     }
 }

@@ -189,9 +189,6 @@ fn main() -> Result<(), Error> {
 
     let mut bot = HexBot::new(colour);
     let mut rl = Editor::<()>::new()?;
-    // if rl.load_history(HISTFILE).is_err() {
-    // eprintln!("No previous history.");
-    // }
     loop {
         let readline = rl.readline("");
         match readline {
@@ -213,6 +210,5 @@ fn main() -> Result<(), Error> {
             }
         }
     }
-    // rl.save_history(HISTFILE)?;
     Ok(())
 }

@@ -159,9 +159,6 @@ impl<'a> PotEval<'a> {
             let value = neighbours[idx];
             if value >= MAX_VALUE && neighbours[(idx + 2) % 6] >= MAX_VALUE {
                 if neighbours[(idx + 1) % 6] < 0 {
-                    // view-source:https://www.lutanho.net/play/hex.html line 651:
-                    // ddb=+32
-                    // ^ original might have been a typo
                     block_score += 32;
                 } else {
                     neighbours[(idx + 1) % 6] += 128; // 512
@@ -271,21 +268,18 @@ impl<'a> PotEval<'a> {
         self.potential[idx][edge.idx()]
     }
 
-    pub fn get_best_move(&self, move_count: u32) -> Tile {
+    pub fn get_best_move(&self, move_count: u16) -> Tile {
         let mut ff: f32 = 0.0;
         let mut mm: f32 = f32::MAX;
         let (iq, jq) = self.get_quadrant();
         let mut best_move: Option<Tile> = None;
 
         if move_count > 0 {
-            let factor = unsafe {
-                if crate::STARTING_COLOUR == Colour::Black {
-                    140.0
-                } else {
-                    14.0
-                }
-            };
-            ff = factor / ((move_count * move_count) as f32);
+            let colour = unsafe { crate::STARTING_COLOUR };
+            // let colour = self.active;
+            let factor = if colour == Colour::Black { 190.0 } else { 1.0 };
+            let m = move_count as usize;
+            ff = factor / (m * m) as f32;
         }
 
         let mut moves = std::collections::HashMap::new();
@@ -348,7 +342,7 @@ impl<'a> PotEval<'a> {
         (iq.signum() as i8, jq.signum() as i8)
     }
 
-    fn get_edges(&self, i: i8) -> [(Edge, Tile); 4] {
+    const fn get_edges(&self, i: i8) -> [(Edge, Tile); 4] {
         [
             (Edge::Top, Tile::Valid(0, i)),
             (Edge::Bottom, Tile::Valid(self.board.size - 1, i)),
