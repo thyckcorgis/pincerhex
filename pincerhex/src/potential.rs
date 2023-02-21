@@ -68,7 +68,6 @@ impl<'a> PotEval<'a> {
 
     pub fn evaluate(&mut self) -> &mut Self {
         self.init_tile_potential();
-        // dbg!(&self.potential);
         for i in EDGES {
             self.evaluate_side(i);
         }
@@ -279,7 +278,14 @@ impl<'a> PotEval<'a> {
         let mut best_move: Option<Tile> = None;
 
         if move_count > 0 {
-            ff = 190.0 / ((move_count * move_count) as f32);
+            let factor = unsafe {
+                if crate::STARTING_COLOUR == Colour::Black {
+                    140.0
+                } else {
+                    14.0
+                }
+            };
+            ff = factor / ((move_count * move_count) as f32);
         }
 
         let mut moves = std::collections::HashMap::new();
@@ -289,9 +295,13 @@ impl<'a> PotEval<'a> {
                     continue;
                 }
 
-                let mut mmp = ((f32::from(i) - 5.0).abs() + (f32::from(j) - 5.0).abs())
+                let f_size = f32::from(self.board.size / 2);
+                let mut mmp = ((f32::from(i) - f_size).abs() + (f32::from(j) - f_size).abs())
                     .mul_add(ff, rand::thread_rng().gen::<f32>());
-                mmp += 8.0 * f32::from((iq * (i - 5)) + (jq * (j - 5))) / (move_count + 1) as f32;
+                mmp +=
+                    8.0 * f32::from(
+                        (iq * (i - self.board.size / 2)) + (jq * (j - self.board.size / 2)),
+                    ) / (move_count + 1) as f32;
 
                 let tile = Tile::Valid(i, j);
                 let index = tile.to_index(self.board.size).unwrap();

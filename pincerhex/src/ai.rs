@@ -114,7 +114,10 @@ impl HexBot {
         match s {
             SwapRole::Start => {
                 let mut rng = rand::thread_rng();
-                let (mut i, mut j) = (rng.gen_range(0..4), rng.gen_range(0..4));
+                let (mut i, mut j) = (
+                    rng.gen_range(0..(self.size / 2 - 1)),
+                    rng.gen_range(0..(self.size / 2 - 1)),
+                );
                 if rng.gen_range(0..2) == 0 {
                     i = self.size - 1 - i;
                     j = self.size - 1 - j;
