@@ -1,15 +1,11 @@
-#[cfg(feature = "switcheroo")]
-use std::{
-    env::current_exe,
-    process::{exit, Command},
-};
-
 use rustyline::{self, error::ReadlineError, Editor};
 
 mod ai;
 mod board;
 #[cfg(feature = "explore")]
 mod explore;
+#[cfg(feature = "switcheroo")]
+mod hexterminate;
 mod potential;
 mod state;
 mod tile;
@@ -175,31 +171,11 @@ impl From<rustyline::error::ReadlineError> for Error {
     }
 }
 
-#[cfg(feature = "switcheroo")]
-fn hexterminate() {
-    let path = current_exe()
-        .ok()
-        .map(|p| p.parent().unwrap().join("hexterminator"))
-        .unwrap();
-    let mut child = Command::new(&path)
-        .arg("white")
-        .spawn()
-        .expect("failed to start hexterminator");
-
-    match child.wait() {
-        Ok(ok) => exit(ok.code().expect("an exit code")),
-        Err(e) => {
-            eprintln!("{e}");
-            exit(1);
-        }
-    }
-}
-
 fn main() -> Result<(), Error> {
     let args: Vec<String> = std::env::args().collect();
     #[cfg(feature = "switcheroo")]
     if let Some("white") = args.get(1).map(|s| s.as_str()) {
-        hexterminate();
+        hexterminate::hexterminate().unwrap();
     };
     let colour = args
         .get(1)

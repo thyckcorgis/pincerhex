@@ -6,8 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ctrlc = "3.2.5"
 rand = "0.8.5"
 rustyline = "10.1.1"
+tempfile = "3.3.0"
 
 [features]
 explore = []

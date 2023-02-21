@@ -11,7 +11,7 @@ explore:
 	mv -f ./target/release/$(EXE) ./$(EXE)_exp
 
 switcheroo:
+	cd ../hexterminator && $(MAKE) && cp -f hexbot ../pincerhex/hexterminator
 	cargo build --release --features switcheroo
 	rm -f ./$(EXE)_switcheroo
 	mv -f ./target/release/$(EXE) ./$(EXE)_switcheroo
-	cd ../hexterminator && $(MAKE) && cp -f hexbot ../pincerhex/hexterminator
