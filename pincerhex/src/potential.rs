@@ -41,20 +41,49 @@ pub struct PotEval<'a> {
 }
 
 struct Params {
+    rounds: i32,
+
+    init_potential: i32,
+    default_potential: i32,
+    diff: i32,
+    max_value: i32,
+
+    // Factor for FF
     bf: f32,
     wf: f32,
+
+    pp_threshold: i32,
+    mmp_deduction: f32,
+    move_mul: f32,
 }
 
 #[cfg(feature = "params")]
-const PARAMS: Params = Params { bf: 140.0, wf: 1.0 };
-#[cfg(not(feature = "params"))]
-const PARAMS: Params = Params { bf: 140.0, wf: 1.0 };
+const PARAMS: Params = Params {
+    bf: 140.0,
+    wf: 1.0,
+    init_potential: 20_000,
+    default_potential: 128,
+    diff: 140,
+    max_value: 30_000,
+    rounds: 1000,
+    pp_threshold: 268,
+    move_mul: 8.0,
+    mmp_deduction: 400.0,
+};
 
-const INIT_POTENTIAL: i32 = 20_000;
-const DEFAULT_POTENTIAL: i32 = 128;
-const DIFF: i32 = 140;
-const MAX_VALUE: i32 = 30_000;
-const ROUNDS: i32 = 1000;
+#[cfg(not(feature = "params"))]
+const PARAMS: Params = Params {
+    bf: 140.0,
+    wf: 1.0,
+    init_potential: 20_000,
+    default_potential: 128,
+    diff: 140,
+    max_value: 30_000,
+    rounds: 1000,
+    pp_threshold: 268,
+    move_mul: 8.0,
+    mmp_deduction: 400.0,
+};
 
 const EDGES: [Edge; 4] = [Edge::Left, Edge::Right, Edge::Top, Edge::Bottom];
 
@@ -64,7 +93,7 @@ impl<'a> PotEval<'a> {
         Self {
             board,
             active,
-            potential: vec![[INIT_POTENTIAL; 4]; size.pow(2)],
+            potential: vec![[PARAMS.init_potential; 4]; size.pow(2)],
             bridge: vec![[0.; 4]; size.pow(2)],
             update: vec![false; size.pow(2)],
         }
@@ -86,7 +115,7 @@ impl<'a> PotEval<'a> {
 
     fn evaluate_side(&mut self, edge: Edge) {
         self.reset_update();
-        for _i in 1..ROUNDS {
+        for _i in 1..PARAMS.rounds {
             let mut set = 0;
             for (tile, state) in self.board.iter() {
                 if self.update[tile.to_index(self.board.size).unwrap()] {
@@ -140,8 +169,8 @@ impl<'a> PotEval<'a> {
                     0
                 }
             }
-            Some(_) | None if min_potential + DIFF < self.potential[index][edge.idx()] => {
-                self.potential[index][edge.idx()] = min_potential + DIFF;
+            Some(_) | None if min_potential + PARAMS.diff < self.potential[index][edge.idx()] => {
+                self.potential[index][edge.idx()] = min_potential + PARAMS.diff;
                 self.update_neighbours(tile);
                 1
             }
@@ -152,7 +181,7 @@ impl<'a> PotEval<'a> {
     fn calculate_potential(&mut self, tile: Tile, edge: Edge) -> (i32, i32) {
         let mut block_score = 0;
         let mut bridge_weights = [0; 6];
-        let mut min_potential = MAX_VALUE;
+        let mut min_potential = PARAMS.max_value;
         let mut neighbours = [0; 6];
 
         for (idx, value) in self
@@ -167,7 +196,7 @@ impl<'a> PotEval<'a> {
 
         for idx in 0..6 {
             let value = neighbours[idx];
-            if value >= MAX_VALUE && neighbours[(idx + 2) % 6] >= MAX_VALUE {
+            if value >= PARAMS.max_value && neighbours[(idx + 2) % 6] >= PARAMS.max_value {
                 if neighbours[(idx + 1) % 6] < 0 {
                     block_score += 32;
                 } else {
@@ -178,7 +207,7 @@ impl<'a> PotEval<'a> {
 
         for idx in 0..6 {
             let value = neighbours[idx];
-            if (value >= MAX_VALUE) && neighbours[(idx + 3) % 6] >= MAX_VALUE {
+            if (value >= PARAMS.max_value) && neighbours[(idx + 3) % 6] >= PARAMS.max_value {
                 block_score += 30;
             }
         }
@@ -186,7 +215,7 @@ impl<'a> PotEval<'a> {
         for idx in 0..6 {
             let value = neighbours[idx];
             if value < 0 {
-                neighbours[idx] += MAX_VALUE;
+                neighbours[idx] += PARAMS.max_value;
                 bridge_weights[idx] = 10;
             } else {
                 bridge_weights[idx] = 1;
@@ -234,7 +263,7 @@ impl<'a> PotEval<'a> {
         }
 
         if total_weight < 2. {
-            let mut closest_high_value = MAX_VALUE;
+            let mut closest_high_value = PARAMS.max_value;
             for idx in 0..6 {
                 let val = neighbours[idx];
                 if val > min_potential && closest_high_value > val {
@@ -264,10 +293,12 @@ impl<'a> PotEval<'a> {
 
     fn pot_val(&self, tile: Option<(Tile, PieceState)>, edge: Edge) -> i32 {
         match tile {
-            Some((_, PieceState::Colour(other))) if other == edge.colour().opponent() => MAX_VALUE, // Blocked
+            Some((_, PieceState::Colour(other))) if other == edge.colour().opponent() => {
+                PARAMS.max_value
+            } // Blocked
             Some((Tile::Valid(r, c), PieceState::Empty)) => self.get_potential(r, c, edge),
-            Some((Tile::Valid(r, c), _)) => self.get_potential(r, c, edge) - MAX_VALUE,
-            Some((_, _)) | None => MAX_VALUE, // Border
+            Some((Tile::Valid(r, c), _)) => self.get_potential(r, c, edge) - PARAMS.max_value,
+            Some((_, _)) | None => PARAMS.max_value, // Border
         }
     }
 
@@ -306,10 +337,11 @@ impl<'a> PotEval<'a> {
                 let f_size = f32::from(self.board.size / 2);
                 let mut mmp = ((f32::from(i) - f_size).abs() + (f32::from(j) - f_size).abs())
                     .mul_add(ff, rand::thread_rng().gen::<f32>());
-                mmp +=
-                    8.0 * f32::from(
+                mmp += PARAMS.move_mul
+                    * f32::from(
                         (iq * (i - self.board.size / 2)) + (jq * (j - self.board.size / 2)),
-                    ) / (move_count + 1) as f32;
+                    )
+                    / (move_count + 1) as f32;
 
                 let tile = Tile::Valid(i, j);
                 let index = tile.to_index(self.board.size).unwrap();
@@ -322,8 +354,8 @@ impl<'a> PotEval<'a> {
                 let pp1 = self.potential[index][2] + self.potential[index][3];
                 mmp += (pp0 + pp1) as f32;
 
-                if pp0 <= 268 || pp1 <= 268 {
-                    mmp -= 400.0;
+                if pp0 <= PARAMS.pp_threshold || pp1 <= PARAMS.pp_threshold {
+                    mmp -= PARAMS.mmp_deduction;
                 }
 
                 moves.insert(tile, mmp);
@@ -375,7 +407,7 @@ impl<'a> PotEval<'a> {
                         self.potential[index][e.idx()] = 0;
                     }
                     _ => {
-                        self.potential[index][e.idx()] = DEFAULT_POTENTIAL;
+                        self.potential[index][e.idx()] = PARAMS.default_potential;
                     }
                 }
             }
