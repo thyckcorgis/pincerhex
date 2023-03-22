@@ -1,16 +1,9 @@
 use rustyline::{self, error::ReadlineError, Editor};
 
-mod ai;
-mod board;
-mod potential;
-mod state;
-mod tile;
-mod union_find;
-
-use ai::{BotError, HexBot};
-use tile::{Colour, Move, PieceState};
-
-static mut STARTING_COLOUR: Colour = Colour::Black;
+use pincerhex_move::{
+    BoardError, BotError, Colour, HexBot, Move, PieceState, StateError, TileError, Winner,
+    STARTING_COLOUR,
+};
 
 #[allow(dead_code)]
 const HISTFILE: &str = "history.txt";
@@ -40,25 +33,20 @@ impl core::fmt::Display for REPLError {
             Self::Usage(u) => write!(f, "{u}"),
             Self::Bot(b) => match b {
                 BotError::State(e) => match e {
-                    state::Error::TileNotEmpty => write!(f, "tile not empty"),
-                    state::Error::InvalidTile => write!(f, "invalid tile"),
-                    state::Error::Board(b) => match b {
-                        board::Error::NotInRange => write!(f, "not in range"),
+                    StateError::TileNotEmpty => write!(f, "tile not empty"),
+                    StateError::InvalidTile => write!(f, "invalid tile"),
+                    StateError::Board(b) => match b {
+                        BoardError::NotInRange => write!(f, "not in range"),
                     },
                 },
                 BotError::InvalidMove(m) => match m {
-                    tile::Error::InvalidCol => write!(f, "invalid col"),
-                    tile::Error::InvalidRow => write!(f, "invalid row"),
+                    TileError::InvalidCol => write!(f, "invalid col"),
+                    TileError::InvalidRow => write!(f, "invalid row"),
                 },
                 BotError::EmptyMove => write!(f, "empty move"),
             },
         }
     }
-}
-
-pub enum Winner {
-    Bot,
-    Opponent,
 }
 
 enum HexBotOutput {
