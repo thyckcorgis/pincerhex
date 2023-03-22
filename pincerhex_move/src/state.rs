@@ -1,8 +1,9 @@
-use crate::board::{self, Board};
-use crate::tile::{Colour, PieceState, Tile};
-use crate::union_find::UnionFind;
-use crate::Winner;
+use crate::{union_find::UnionFind, Winner};
 use rand::Rng;
+use tile_state::{
+    board::{self, Board},
+    tile::{Colour, PieceState, Tile},
+};
 
 pub struct State {
     size: i8,

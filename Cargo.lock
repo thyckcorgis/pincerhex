@@ -194,7 +194,17 @@ dependencies = [
 name = "pincerhex_move"
 version = "0.1.0"
 dependencies = [
+ "pot_eval",
  "rand",
+ "tile_state",
+]
+
+[[package]]
+name = "pot_eval"
+version = "0.1.0"
+dependencies = [
+ "rand",
+ "tile_state",
 ]
 
 [[package]]
@@ -366,6 +376,10 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "tile_state"
+version = "0.1.0"
 
 [[package]]
 name = "unicode-ident"

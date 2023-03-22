@@ -1,12 +1,14 @@
-use crate::{
-    board::Board,
-    tile::{Colour, PieceState, Tile},
-};
 use rand::Rng;
-
 extern crate alloc;
 
 use alloc::collections::BTreeMap;
+
+use tile_state::{
+    board::Board,
+    tile::{Colour, PieceState, Tile},
+};
+
+pub static mut STARTING_COLOUR: Colour = Colour::Black;
 
 #[derive(Clone, Copy)]
 enum Edge {

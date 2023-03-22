@@ -1,7 +1,7 @@
 extern crate alloc;
 
-use crate::tile::Tile;
 use core::cmp::Ordering;
+use tile_state::tile::Tile;
 
 use alloc::collections::BTreeMap;
 
