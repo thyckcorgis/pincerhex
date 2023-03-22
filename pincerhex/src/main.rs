@@ -2,10 +2,6 @@ use rustyline::{self, error::ReadlineError, Editor};
 
 mod ai;
 mod board;
-#[cfg(feature = "explore")]
-mod explore;
-#[cfg(feature = "switcheroo")]
-mod hexterminate;
 mod potential;
 mod state;
 mod tile;
@@ -27,21 +23,18 @@ enum REPLError {
 
 enum Usage {
     InitBoard,
-    #[allow(dead_code)]
-    Mcts,
 }
 
-impl std::fmt::Display for Usage {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Usage {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InitBoard => write!(f, "usage: init_board <size>"),
-            Self::Mcts => write!(f, "usage: mcts <param_name> <param_value>"),
         }
     }
 }
 
-impl std::fmt::Display for REPLError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for REPLError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidCommand => write!(f, "invalid command"),
             Self::Usage(u) => write!(f, "{u}"),
@@ -75,8 +68,8 @@ enum HexBotOutput {
     String(String),
 }
 
-impl std::fmt::Display for HexBotOutput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for HexBotOutput {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Empty => Ok(()),
             Self::Move(m) => match m {
@@ -158,8 +151,8 @@ enum Error {
     Usage(String),
 }
 
-impl std::fmt::Debug for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Readline(err) => write!(f, "{err}"),
             Self::Usage(s) => write!(f, "usage: {s} <colour>"),
@@ -175,10 +168,6 @@ impl From<rustyline::error::ReadlineError> for Error {
 
 fn main() -> Result<(), Error> {
     let args: Vec<String> = std::env::args().collect();
-    #[cfg(feature = "switcheroo")]
-    if let Some("white") = args.get(1).map(|s| s.as_str()) {
-        hexterminate::hexterminate().unwrap();
-    };
     let colour = args
         .get(1)
         .and_then(|s| Colour::try_from(s).ok())

@@ -1,11 +1,13 @@
-use crate::tile::Tile;
-use std::cmp::Ordering;
+extern crate alloc;
 
-use std::collections::HashMap;
+use crate::tile::Tile;
+use core::cmp::Ordering;
+
+use alloc::collections::BTreeMap;
 
 #[derive(Clone)]
 pub struct UnionFind {
-    set: HashMap<Tile, Element>,
+    set: BTreeMap<Tile, Element>,
 }
 
 #[derive(Copy, Clone)]
@@ -15,9 +17,9 @@ struct Element {
 }
 
 impl UnionFind {
-    pub fn new(size: usize) -> Self {
+    pub fn new(_size: usize) -> Self {
         Self {
-            set: HashMap::with_capacity(size),
+            set: BTreeMap::new(),
         }
     }
 

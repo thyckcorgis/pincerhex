@@ -1,5 +1,4 @@
 use rand::Rng;
-use std::time::Duration;
 
 use crate::{
     potential::PotEval,
@@ -20,29 +19,6 @@ pub struct HexBot {
     allow_invalid: bool,
     swap_state: Option<SwapRole>,
     move_count: u16,
-    #[allow(dead_code)]
-    params: MCTSParams,
-}
-
-#[allow(dead_code)]
-struct MCTSParams {
-    rounds: f64,
-    best: f64,
-    exp: f64,
-    timed: bool,
-    timeout: Duration,
-}
-
-impl Default for MCTSParams {
-    fn default() -> Self {
-        Self {
-            rounds: 35_000.,
-            best: 1.,
-            exp: 10.,
-            timeout: Duration::from_secs(5),
-            timed: false,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -67,7 +43,6 @@ impl HexBot {
             allow_invalid: true,
             swap_state: Some(SwapRole::from(c)),
             move_count: 0,
-            params: MCTSParams::default(),
         }
     }
 

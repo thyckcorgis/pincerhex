@@ -1,6 +1,7 @@
 // Totally not stolen from central_program
+extern crate alloc;
 
-use std::collections::HashSet;
+use alloc::collections::BTreeSet;
 
 use crate::tile::{Colour, PieceState, Tile};
 
@@ -29,7 +30,7 @@ impl<'a> Board {
 
     #[allow(dead_code)]
     pub fn swap_pieces(&mut self) -> Result<(), Error> {
-        let mut to_swap: HashSet<Tile> = HashSet::new();
+        let mut to_swap: BTreeSet<Tile> = BTreeSet::new();
 
         for tile in self.iter() {
             if let (Tile::Valid(row, col), PieceState::Colour(_)) = (tile.0, tile.1) {
@@ -128,14 +129,14 @@ impl<'a> Board {
     }
 }
 
-impl std::fmt::Display for Board {
+impl core::fmt::Display for Board {
     /// Example output:
     /// B . . .
     ///  . B W .
     ///   . . B .
     ///    W . W B
     /// ------------------
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for r in 0..(self.size as usize) {
             write!(f, "{}", " ".repeat(r))?;
 

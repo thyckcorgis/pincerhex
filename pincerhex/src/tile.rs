@@ -1,4 +1,4 @@
-use std::fmt::Write;
+use core::fmt::Write;
 
 // Black goes top -> bottom. White goes left -> right
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -55,14 +55,6 @@ impl Colour {
         }
     }
 
-    #[cfg(feature = "explore")]
-    pub const fn val(self) -> i8 {
-        match self {
-            Self::Black => -1,
-            Self::White => 1,
-        }
-    }
-
     pub const fn opponent(self) -> Self {
         match self {
             Self::Black => Self::White,
@@ -71,7 +63,7 @@ impl Colour {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Hash, Ord)]
 pub enum Tile {
     Valid(i8, i8),
     Edge1,
@@ -121,8 +113,8 @@ impl TryFrom<&str> for Tile {
     }
 }
 
-impl std::fmt::Display for Tile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Tile {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match &self {
             Self::Valid(row, col) => {
                 f.write_char((row + 97) as u8 as char)?;
@@ -135,8 +127,8 @@ impl std::fmt::Display for Tile {
     }
 }
 
-impl std::fmt::Display for Colour {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Colour {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match &self {
             Self::Black => write!(f, "Black"),
             Self::White => write!(f, "White"),

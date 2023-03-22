@@ -10,8 +10,3 @@ ctrlc = "3.2.5"
 rand = "0.8.5"
 rustyline = "10.1.1"
 tempfile = "3.3.0"
-
-[features]
-explore = []
-switcheroo = []
-params = []

@@ -4,8 +4,9 @@ use crate::{
 };
 use rand::Rng;
 
-#[cfg(feature = "explore")]
-use crate::explore::explore_other_moves;
+extern crate alloc;
+
+use alloc::collections::BTreeMap;
 
 #[derive(Clone, Copy)]
 enum Edge {
@@ -57,21 +58,6 @@ struct Params {
     move_mul: f32,
 }
 
-#[cfg(feature = "params")]
-const PARAMS: Params = Params {
-    bf: 140.0,
-    wf: 1.0,
-    init_potential: 20_000,
-    default_potential: 128,
-    diff: 140,
-    max_value: 30_000,
-    rounds: 1000,
-    pp_threshold: 268,
-    move_mul: 8.0,
-    mmp_deduction: 400.0,
-};
-
-#[cfg(not(feature = "params"))]
 const PARAMS: Params = Params {
     bf: 140.0,
     wf: 1.0,
@@ -327,7 +313,7 @@ impl<'a> PotEval<'a> {
             ff = factor / (m * m) as f32;
         }
 
-        let mut moves = std::collections::HashMap::new();
+        let mut moves = BTreeMap::new();
         for i in 0..self.board.size {
             for j in 0..self.board.size {
                 if self.board.get(i, j) != Some(PieceState::Empty) {
@@ -367,9 +353,6 @@ impl<'a> PotEval<'a> {
             }
         }
 
-        #[cfg(feature = "explore")]
-        return explore_other_moves(self.board, moves, best_move.expect("finding the best move"));
-        #[cfg(not(feature = "explore"))]
         return best_move.expect("finding the best move");
     }
 
