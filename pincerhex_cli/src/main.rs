@@ -3,7 +3,7 @@
 
 use rustyline::{self, error::ReadlineError, Editor};
 
-use pincerhex_bot::{BotError, Colour, HexBot, Move, PieceState, Winner, STARTING_COLOUR};
+use pincerhex_bot::{BotError, Colour, HexBot, Move, PieceState, Winner};
 
 #[allow(dead_code)]
 const HISTFILE: &str = "history.txt";
@@ -147,9 +147,6 @@ fn main() -> Result<(), Error> {
         .get(1)
         .and_then(|s| Colour::try_from(s).ok())
         .ok_or(Error::Usage(args[0].clone()))?;
-    unsafe {
-        STARTING_COLOUR = colour;
-    }
 
     let mut bot = HexBot::new(colour);
     let mut rl = Editor::<()>::new()?;

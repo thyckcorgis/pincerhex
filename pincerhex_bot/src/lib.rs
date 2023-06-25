@@ -18,7 +18,7 @@ mod state;
 mod union_find;
 
 pub use ai::{BotError, HexBot};
-pub use pincerhex_core::{Colour, Move, PieceState, STARTING_COLOUR};
+pub use pincerhex_core::{Colour, Move, PieceState};
 use rand::{rngs::ThreadRng, Rng};
 
 pub enum Winner {

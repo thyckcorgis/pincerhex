@@ -25,6 +25,7 @@ impl From<Colour> for SwapRole {
 
 pub struct HexBot {
     colour: Colour,
+    starting: Colour,
     state: State,
     size: i8,
     #[allow(dead_code)]
@@ -61,6 +62,7 @@ impl HexBot {
     pub fn new(c: Colour) -> Self {
         Self {
             colour: c,
+            starting: c,
             state: State::default(),
             size: DEFAULT_SIZE,
             allow_invalid: true,
@@ -139,7 +141,7 @@ impl HexBot {
 
     fn regular_move(&mut self) -> Tile {
         let mut rng = StdRng(rand::thread_rng());
-        let (i, j) = PotentialEvaluator::new(self.state.get_board(), self.colour)
+        let (i, j) = PotentialEvaluator::new(self.state.get_board(), self.colour, self.starting)
             .evaluate()
             .get_best_move(self.move_count, &mut rng);
         let mv = Tile::Regular(i, j);

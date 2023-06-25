@@ -18,7 +18,7 @@ mod eval;
 mod tile;
 
 pub use board::{Board, Error as BoardError};
-pub use eval::{PotentialEvaluator, STARTING_COLOUR};
+pub use eval::PotentialEvaluator;
 pub use tile::{Colour, Error as TileError, Move, PieceState, Tile};
 
 pub trait Rand {

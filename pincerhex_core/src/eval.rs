@@ -10,8 +10,6 @@ use crate::{
     Rand,
 };
 
-pub static mut STARTING_COLOUR: Colour = Colour::Black;
-
 #[derive(Clone, Copy)]
 enum Edge {
     Top,
@@ -40,6 +38,7 @@ impl Edge {
 pub struct PotentialEvaluator<'a> {
     board: &'a Board,
     active: Colour,
+    starting: Colour,
     potential: Vec<[i32; 4]>,
     bridge: Vec<[f32; 4]>,
     update: Vec<bool>,
@@ -53,8 +52,9 @@ struct Params {
     diff: i32,
     max_value: i32,
 
-    // Factor for FF
+    /// Black Factor for FF.
     bf: f32,
+    /// White Factor for FF.
     wf: f32,
 
     pp_threshold: i32,
@@ -79,12 +79,13 @@ const EDGES: [Edge; 4] = [Edge::Left, Edge::Right, Edge::Top, Edge::Bottom];
 
 impl<'a> PotentialEvaluator<'a> {
     #[must_use]
-    pub fn new(board: &'a Board, active: Colour) -> Self {
+    pub fn new(board: &'a Board, active: Colour, starting: Colour) -> Self {
         let size = board.size as usize;
         Self {
             board,
             active,
             potential: vec![[PARAMS.init_potential; 4]; size.pow(2)],
+            starting,
             bridge: vec![[0.; 4]; size.pow(2)],
             update: vec![false; size.pow(2)],
         }
@@ -308,8 +309,7 @@ impl<'a> PotentialEvaluator<'a> {
         let mut best_move: Option<(i8, i8)> = None;
 
         if move_count > 0 {
-            let colour = unsafe { crate::STARTING_COLOUR };
-            // let colour = self.active;
+            let colour = self.starting;
             let factor = if colour == Colour::Black {
                 PARAMS.bf
             } else {
