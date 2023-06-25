@@ -40,6 +40,16 @@ pub struct PotEval<'a> {
     update: Vec<bool>,
 }
 
+struct Params {
+    bf: f32,
+    wf: f32,
+}
+
+#[cfg(feature = "params")]
+const PARAMS: Params = Params { bf: 140.0, wf: 1.0 };
+#[cfg(not(feature = "params"))]
+const PARAMS: Params = Params { bf: 140.0, wf: 1.0 };
+
 const INIT_POTENTIAL: i32 = 20_000;
 const DEFAULT_POTENTIAL: i32 = 128;
 const DIFF: i32 = 140;
@@ -277,7 +287,11 @@ impl<'a> PotEval<'a> {
         if move_count > 0 {
             let colour = unsafe { crate::STARTING_COLOUR };
             // let colour = self.active;
-            let factor = if colour == Colour::Black { 190.0 } else { 1.0 };
+            let factor = if colour == Colour::Black {
+                PARAMS.bf
+            } else {
+                PARAMS.wf
+            };
             let m = move_count as usize;
             ff = factor / (m * m) as f32;
         }

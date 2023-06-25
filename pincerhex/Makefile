@@ -15,3 +15,8 @@ switcheroo:
 	cargo build --release --features switcheroo
 	rm -f ./$(EXE)_switcheroo
 	mv -f ./target/release/$(EXE) ./$(EXE)_switcheroo
+
+alt:
+	cargo build --release --features params
+	rm -f ./$(EXE)_alt
+	mv -f ./target/release/$(EXE) ./$(EXE)_alt
