@@ -4,7 +4,7 @@ description = "CLI following the protocol used in the UAIS Hexbot Competition"
 version = "0.1.0"
 edition = "2021"
 license = "GPL3"
-repository = "https://github.com/thyckcorgis/pincerhex"
+repository = "https://github.com/thyckcorgis/pincerhex/pincerhex_cli"
 categories = ["cli"]
 keywords = ["board-game"]
 
@@ -12,4 +12,4 @@ keywords = ["board-game"]
 
 [dependencies]
 rustyline = "10.1.1"
-pincerhex_core = { path = "../pincerhex_core" }
+pincerhex_bot = { path = "../pincerhex_bot" }

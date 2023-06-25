@@ -1,0 +1,20 @@
+[package]
+name = "pincerhex_wasm"
+description = "WASM library for Pincerhex"
+version = "0.1.0"
+edition = "2021"
+license = "GPL3"
+repository = "https://github.com/thyckcorgis/pincerhex/pincerhex_wasm"
+categories = ["wasm", "no-std"]
+keywords = ["hex", "board-game"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2.87"
+rand = { version = "0.8.5", features = ["small_rng"], default-features = false }
+pincerhex_core = { path = "../pincerhex_core" }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.37"

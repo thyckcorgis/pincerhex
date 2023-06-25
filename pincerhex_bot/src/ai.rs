@@ -1,16 +1,27 @@
 use alloc::string::String;
-use rand::Rng;
 
-use crate::{
-    eval::PotentialEvaluator,
-    state::{self, State, DEFAULT_SIZE},
-    tile::{self, Colour, Move, PieceState, SwapRole, Tile},
-    Winner,
-};
+use crate::state::{self, State, DEFAULT_SIZE};
+use crate::{StdRng, Winner};
+use pincerhex_core::{first_move, Colour, Move, PieceState, PotentialEvaluator, Tile, TileError};
 
 /// Whether or not to play with the swap rule
 /// Should probably be an environment variable
 pub const SWAP_RULE: bool = true;
+
+#[derive(Debug, Clone, Copy)]
+pub enum SwapRole {
+    Start,
+    Swap,
+}
+
+impl From<Colour> for SwapRole {
+    fn from(value: Colour) -> Self {
+        match value {
+            Colour::Black => Self::Start,
+            Colour::White => Self::Swap,
+        }
+    }
+}
 
 pub struct HexBot {
     colour: Colour,
@@ -26,7 +37,17 @@ pub struct HexBot {
 pub enum BotError {
     State(state::Error),
     EmptyMove,
-    InvalidMove(tile::Error),
+    InvalidMove(TileError),
+}
+
+impl core::fmt::Display for BotError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::State(e) => write!(f, "{e}"),
+            Self::InvalidMove(m) => write!(f, "{m}"),
+            Self::EmptyMove => write!(f, "empty move"),
+        }
+    }
 }
 
 impl From<state::Error> for BotError {
@@ -97,16 +118,9 @@ impl HexBot {
     fn handle_swap(&mut self, s: SwapRole) -> Result<Move, BotError> {
         match s {
             SwapRole::Start => {
-                let mut rng = rand::thread_rng();
-                let (mut i, mut j) = (
-                    rng.gen_range(0..(self.size / 2 - 1)),
-                    rng.gen_range(0..(self.size / 2 - 1)),
-                );
-                if rng.gen_range(0..2) == 0 {
-                    i = self.size - 1 - i;
-                    j = self.size - 1 - j;
-                }
-                let mv = Tile::Valid(i, j);
+                let mut rng = StdRng(rand::thread_rng());
+                let (i, j) = first_move(self.size, &mut rng);
+                let mv = Tile::Regular(i, j);
                 self.state
                     .place_piece(mv, PieceState::Colour(self.colour))?;
                 self.move_count += 1;
@@ -124,9 +138,11 @@ impl HexBot {
     }
 
     fn regular_move(&mut self) -> Tile {
-        let mv = PotentialEvaluator::new(self.state.get_board(), self.colour)
+        let mut rng = StdRng(rand::thread_rng());
+        let (i, j) = PotentialEvaluator::new(self.state.get_board(), self.colour)
             .evaluate()
-            .get_best_move(self.move_count);
+            .get_best_move(self.move_count, &mut rng);
+        let mv = Tile::Regular(i, j);
 
         self.place_piece(mv, PieceState::Colour(self.colour))
             .expect("valid move");

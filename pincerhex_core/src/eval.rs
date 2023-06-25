@@ -1,11 +1,13 @@
-use rand::Rng;
 extern crate alloc;
 
 use alloc::vec::Vec;
+#[allow(unused_imports)]
+use micromath::F32Ext;
 
 use crate::{
     board::Board,
     tile::{Colour, PieceState, Tile},
+    Rand,
 };
 
 pub static mut STARTING_COLOUR: Colour = Colour::Black;
@@ -76,6 +78,7 @@ const PARAMS: Params = Params {
 const EDGES: [Edge; 4] = [Edge::Left, Edge::Right, Edge::Top, Edge::Bottom];
 
 impl<'a> PotentialEvaluator<'a> {
+    #[must_use]
     pub fn new(board: &'a Board, active: Colour) -> Self {
         let size = board.size as usize;
         Self {
@@ -283,24 +286,26 @@ impl<'a> PotentialEvaluator<'a> {
             Some((_, PieceState::Colour(other))) if other == edge.colour().opponent() => {
                 PARAMS.max_value
             } // Blocked
-            Some((Tile::Valid(r, c), PieceState::Empty)) => self.get_potential(r, c, edge),
-            Some((Tile::Valid(r, c), _)) => self.get_potential(r, c, edge) - PARAMS.max_value,
+            Some((Tile::Regular(r, c), PieceState::Empty)) => self.get_potential(r, c, edge),
+            Some((Tile::Regular(r, c), _)) => self.get_potential(r, c, edge) - PARAMS.max_value,
             Some((_, _)) | None => PARAMS.max_value, // Border
         }
     }
 
     fn get_potential(&self, r: i8, c: i8, edge: Edge) -> i32 {
-        let idx = Tile::Valid(r, c)
+        let idx = Tile::Regular(r, c)
             .to_index(self.board.size)
             .map_or_else(|| panic!("wtf {r} {c}"), |i| i);
         self.potential[idx][edge.idx()]
     }
 
-    pub fn get_best_move(&self, move_count: u16) -> Tile {
+    /// # Panics
+    /// Panics if there was an invalid tile
+    pub fn get_best_move(&self, move_count: u16, rng: &mut impl Rand) -> (i8, i8) {
         let mut ff: f32 = 0.0;
         let mut mm: f32 = f32::MAX;
         let (iq, jq) = self.get_quadrant();
-        let mut best_move: Option<Tile> = None;
+        let mut best_move: Option<(i8, i8)> = None;
 
         if move_count > 0 {
             let colour = unsafe { crate::STARTING_COLOUR };
@@ -321,16 +326,18 @@ impl<'a> PotentialEvaluator<'a> {
                 }
 
                 let f_size = f32::from(self.board.size / 2);
-                let mut mmp = ((f32::from(i) - f_size).abs() + (f32::from(j) - f_size).abs())
-                    .mul_add(ff, rand::thread_rng().gen::<f32>());
+                // No mul_add in micromath
+                #[allow(clippy::suboptimal_flops)]
+                let mut mmp = (((f32::from(i) - f_size).abs() + (f32::from(j) - f_size).abs())
+                    * ff)
+                    + rng.next();
                 mmp += PARAMS.move_mul
                     * f32::from(
                         (iq * (i - self.board.size / 2)) + (jq * (j - self.board.size / 2)),
                     )
                     / (move_count + 1) as f32;
 
-                let tile = Tile::Valid(i, j);
-                let index = tile.to_index(self.board.size).unwrap();
+                let index = Tile::Regular(i, j).to_index(self.board.size).unwrap();
 
                 for val in &self.bridge[index] {
                     mmp -= *val;
@@ -346,7 +353,7 @@ impl<'a> PotentialEvaluator<'a> {
 
                 if mmp < mm {
                     mm = mmp;
-                    best_move = Some(tile);
+                    best_move = Some((i, j));
                 }
             }
         }
@@ -371,10 +378,10 @@ impl<'a> PotentialEvaluator<'a> {
 
     const fn get_edges(&self, i: i8) -> [(Edge, Tile); 4] {
         [
-            (Edge::Top, Tile::Valid(0, i)),
-            (Edge::Bottom, Tile::Valid(self.board.size - 1, i)),
-            (Edge::Left, Tile::Valid(i, 0)),
-            (Edge::Right, Tile::Valid(i, self.board.size - 1)),
+            (Edge::Top, Tile::Regular(0, i)),
+            (Edge::Bottom, Tile::Regular(self.board.size - 1, i)),
+            (Edge::Left, Tile::Regular(i, 0)),
+            (Edge::Right, Tile::Regular(i, self.board.size - 1)),
         ]
     }
 
@@ -397,23 +404,23 @@ impl<'a> PotentialEvaluator<'a> {
 
     const fn is_corner_tile(&self, tile: Tile) -> bool {
         match tile {
-            Tile::Valid(r, c)
+            Tile::Regular(r, c)
                 if (r == 0 || r == self.board.size - 1) && (c == 0 || c == self.board.size - 1) =>
             {
                 true
             }
-            Tile::Valid(_, _) | Tile::Edge1 | Tile::Edge2 | Tile::Invalid => false,
+            Tile::Regular(_, _) | Tile::Edge1 | Tile::Edge2 | Tile::Invalid => false,
         }
     }
 
     const fn is_inside_tile(&self, tile: Tile) -> bool {
         match tile {
-            Tile::Valid(r, c)
+            Tile::Regular(r, c)
                 if r > 0 && r < self.board.size - 1 && c > 0 && c < self.board.size - 1 =>
             {
                 true
             }
-            Tile::Valid(_, _) | Tile::Edge1 | Tile::Edge2 | Tile::Invalid => false,
+            Tile::Regular(_, _) | Tile::Edge1 | Tile::Edge2 | Tile::Invalid => false,
         }
     }
 }

@@ -1,3 +1,8 @@
 [workspace]
 
-members = ["pincerhex_cli", "pincerhex_core"]
+members = ["pincerhex_cli", "pincerhex_core", "pincerhex_wasm"]
+
+[profile.release.package.pincerhex_wasm]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
+strip = true    # Automatically strip symbols from the binary.

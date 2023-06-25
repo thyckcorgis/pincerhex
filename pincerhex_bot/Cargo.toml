@@ -1,0 +1,15 @@
+[package]
+name = "pincerhex_bot"
+description = "Stateful bot for Pincerhex"
+version = "0.1.0"
+edition = "2021"
+license = "GPL3"
+repository = "https://github.com/thyckcorgis/pincerhex/pincerhex_bot"
+categories = ["cli"]
+keywords = ["board-game"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8.5"
+pincerhex_core = { path = "../pincerhex_core" }

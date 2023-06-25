@@ -1,12 +1,7 @@
 use alloc::string::String;
-use rand::Rng;
+use pincerhex_core::{should_swap, Board, BoardError, Colour, PieceState, Tile};
 
-use crate::{
-    board::{self, Board},
-    tile::{Colour, PieceState, Tile},
-    union_find::UnionFind,
-    Winner,
-};
+use crate::{union_find::UnionFind, StdRng, Winner};
 
 pub struct State {
     size: i8,
@@ -19,15 +14,25 @@ pub struct State {
 pub enum Error {
     TileNotEmpty,
     InvalidTile,
-    Board(board::Error),
+    Board(BoardError),
+}
+
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::TileNotEmpty => write!(f, "tile not empty"),
+            Self::InvalidTile => write!(f, "invalid tile"),
+            Self::Board(b) => match b {
+                BoardError::NotInRange => write!(f, "not in range"),
+            },
+        }
+    }
 }
 
 pub const DEFAULT_SIZE: i8 = 10;
 
-const NO_SWAP_CHANCE: i32 = 2;
-
-impl From<board::Error> for Error {
-    fn from(value: board::Error) -> Self {
+impl From<BoardError> for Error {
+    fn from(value: BoardError) -> Self {
         Self::Board(value)
     }
 }
@@ -46,22 +51,10 @@ impl State {
     }
 
     pub fn should_swap(&self) -> bool {
+        let mut rng = StdRng(rand::thread_rng());
         for i in self.board.iter() {
-            if let PieceState::Colour(_) = i.1 {
-                let mut rng = rand::thread_rng();
-                match i.0 {
-                    Tile::Valid(r, c)
-                        if ((r + c < 2) || (r + c > 2 * self.size - 4))
-                            || (((r + c == 2) || (r + c == 2 * self.size - 4))
-                                && rng.gen_range(0..NO_SWAP_CHANCE) == 0) =>
-                    {
-                        return false;
-                    }
-                    Tile::Valid(_, _) => {
-                        return true;
-                    }
-                    _ => {}
-                }
+            if let (Tile::Regular(r, c), PieceState::Colour(_)) = i {
+                return should_swap(r, c, self.size, &mut rng);
             }
         }
         false

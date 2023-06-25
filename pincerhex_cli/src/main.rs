@@ -3,10 +3,7 @@
 
 use rustyline::{self, error::ReadlineError, Editor};
 
-use pincerhex_core::{
-    BoardError, BotError, Colour, HexBot, Move, PieceState, StateError, TileError, Winner,
-    STARTING_COLOUR,
-};
+use pincerhex_bot::{BotError, Colour, HexBot, Move, PieceState, Winner, STARTING_COLOUR};
 
 #[allow(dead_code)]
 const HISTFILE: &str = "history.txt";
@@ -34,20 +31,7 @@ impl core::fmt::Display for REPLError {
         match self {
             Self::InvalidCommand => write!(f, "invalid command"),
             Self::Usage(u) => write!(f, "{u}"),
-            Self::Bot(b) => match b {
-                BotError::State(e) => match e {
-                    StateError::TileNotEmpty => write!(f, "tile not empty"),
-                    StateError::InvalidTile => write!(f, "invalid tile"),
-                    StateError::Board(b) => match b {
-                        BoardError::NotInRange => write!(f, "not in range"),
-                    },
-                },
-                BotError::InvalidMove(m) => match m {
-                    TileError::InvalidCol => write!(f, "invalid col"),
-                    TileError::InvalidRow => write!(f, "invalid row"),
-                },
-                BotError::EmptyMove => write!(f, "empty move"),
-            },
+            Self::Bot(b) => write!(f, "{b}"),
         }
     }
 }

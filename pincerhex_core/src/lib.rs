@@ -13,20 +13,34 @@
 #[macro_use]
 extern crate alloc;
 
-mod ai;
 mod board;
 mod eval;
-mod state;
 mod tile;
-mod union_find;
 
-pub use ai::{BotError, HexBot};
-pub use board::Error as BoardError;
-pub use eval::STARTING_COLOUR;
-pub use state::Error as StateError;
-pub use tile::{Colour, Error as TileError, Move, PieceState};
+pub use board::{Board, Error as BoardError};
+pub use eval::{PotentialEvaluator, STARTING_COLOUR};
+pub use tile::{Colour, Error as TileError, Move, PieceState, Tile};
 
-pub enum Winner {
-    Bot,
-    Opponent,
+pub trait Rand {
+    fn in_range(&mut self, a: i8, b: i8) -> i8;
+    fn next(&mut self) -> f32;
+}
+
+const NO_SWAP_CHANCE: i8 = 2;
+
+pub fn should_swap(r: i8, c: i8, size: i8, rand: &mut impl Rand) -> bool {
+    ((r + c < 2) || (r + c > 2 * size - 4))
+        || (((r + c == 2) || (r + c == 2 * size - 4)) && rand.in_range(0, NO_SWAP_CHANCE) == 0)
+}
+
+pub fn first_move(size: i8, rand: &mut impl Rand) -> (i8, i8) {
+    let (mut i, mut j) = (
+        rand.in_range(0, size / 2 - 1),
+        rand.in_range(0, size / 2 - 1),
+    );
+    if rand.in_range(0, 2) == 0 {
+        i = size - 1 - i;
+        j = size - 1 - j;
+    }
+    (i, j)
 }

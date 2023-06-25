@@ -1,9 +1,8 @@
 extern crate alloc;
 
-use crate::tile::Tile;
-use core::cmp::Ordering;
-
 use alloc::collections::BTreeMap;
+use core::cmp::Ordering;
+use pincerhex_core::Tile;
 
 #[derive(Clone)]
 pub struct UnionFind {
