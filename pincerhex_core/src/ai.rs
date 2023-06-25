@@ -1,11 +1,12 @@
+use alloc::string::String;
 use rand::Rng;
 
 use crate::{
+    eval::PotEval,
     state::{self, State, DEFAULT_SIZE},
+    tile::{self, Colour, Move, PieceState, SwapRole, Tile},
     Winner,
 };
-use pot_eval::PotEval;
-use tile_state::tile::{self, Colour, Move, PieceState, SwapRole, Tile};
 
 /// Whether or not to play with the swap rule
 /// Should probably be an environment variable

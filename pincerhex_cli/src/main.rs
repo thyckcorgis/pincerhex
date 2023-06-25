@@ -1,6 +1,6 @@
 use rustyline::{self, error::ReadlineError, Editor};
 
-use pincerhex_move::{
+use pincerhex_core::{
     BoardError, BotError, Colour, HexBot, Move, PieceState, StateError, TileError, Winner,
     STARTING_COLOUR,
 };

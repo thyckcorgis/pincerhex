@@ -1,9 +1,9 @@
 use rand::Rng;
 extern crate alloc;
 
-use alloc::collections::BTreeMap;
+use alloc::{collections::BTreeMap, vec::Vec};
 
-use tile_state::{
+use crate::{
     board::Board,
     tile::{Colour, PieceState, Tile},
 };

@@ -1,8 +1,11 @@
-use crate::{union_find::UnionFind, Winner};
+use alloc::string::String;
 use rand::Rng;
-use tile_state::{
+
+use crate::{
     board::{self, Board},
     tile::{Colour, PieceState, Tile},
+    union_find::UnionFind,
+    Winner,
 };
 
 pub struct State {
