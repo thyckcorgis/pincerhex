@@ -183,7 +183,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pincerhex"
+name = "pincerhex_cli"
 version = "0.1.0"
 dependencies = [
  "pincerhex_core",

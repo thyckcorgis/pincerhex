@@ -1,3 +1,6 @@
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
+#![allow(clippy::implicit_return, clippy::question_mark_used)]
+
 use rustyline::{self, error::ReadlineError, Editor};
 
 use pincerhex_core::{
@@ -113,7 +116,7 @@ fn process_command(
             Ok(HexBotOutput::Empty)
         }
         "swap" => {
-            bot.swap()?;
+            bot.swap();
             Ok(HexBotOutput::Empty)
         }
         "c" | "check_win" => Ok(HexBotOutput::CheckWin(bot.check_win())),

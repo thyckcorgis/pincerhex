@@ -50,6 +50,7 @@ pub enum PieceState {
 }
 
 impl Colour {
+    #[must_use]
     pub const fn group_idx(self) -> usize {
         match self {
             Self::Black => 0,
@@ -57,6 +58,7 @@ impl Colour {
         }
     }
 
+    #[must_use]
     pub const fn opponent(self) -> Self {
         match self {
             Self::Black => Self::White,
@@ -74,6 +76,8 @@ pub enum Tile {
 }
 
 impl Tile {
+    /// # Panics
+    /// Panics if called on an invalid tile
     pub const fn edge(self, colour: Colour) -> i8 {
         match (self, colour) {
             (Self::Valid(r, _), Colour::Black) => r,

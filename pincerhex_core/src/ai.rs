@@ -2,7 +2,7 @@ use alloc::string::String;
 use rand::Rng;
 
 use crate::{
-    eval::PotEval,
+    eval::PotentialEvaluator,
     state::{self, State, DEFAULT_SIZE},
     tile::{self, Colour, Move, PieceState, SwapRole, Tile},
     Winner,
@@ -36,6 +36,7 @@ impl From<state::Error> for BotError {
 }
 
 impl HexBot {
+    #[must_use]
     pub fn new(c: Colour) -> Self {
         Self {
             colour: c,
@@ -47,6 +48,7 @@ impl HexBot {
         }
     }
 
+    #[must_use]
     pub const fn colour(&self) -> Colour {
         self.colour
     }
@@ -55,6 +57,8 @@ impl HexBot {
         self.state.place_piece(mv, state).map_err(BotError::State)
     }
 
+    /// # Errors
+    /// Will return `Err` if given an invalid or empty move
     pub fn set_tile(&mut self, mv: Option<&&str>, state: PieceState) -> Result<(), BotError> {
         mv.ok_or(BotError::EmptyMove)
             .and_then(|s| Tile::try_from(*s).map_err(BotError::InvalidMove))
@@ -68,14 +72,18 @@ impl HexBot {
         self.move_count = 0;
     }
 
+    #[must_use]
     pub fn get_compressed(&self) -> String {
         self.state.get_compressed()
     }
 
+    #[must_use]
     pub fn get_pretty(&self) -> String {
         self.state.get_pretty()
     }
 
+    /// # Errors
+    /// Will return an `Err` if applying the swap rule failed
     pub fn make_move(&mut self) -> Result<Move, BotError> {
         if let (Some(s), true) = (self.swap_state, SWAP_RULE) {
             let mv = self.handle_swap(s)?;
@@ -106,7 +114,7 @@ impl HexBot {
             }
             SwapRole::Swap => {
                 if self.state.should_swap() {
-                    self.swap()?;
+                    self.swap();
                     Ok(Move::Swap)
                 } else {
                     Ok(Move::Move(self.regular_move()))
@@ -116,7 +124,7 @@ impl HexBot {
     }
 
     fn regular_move(&mut self) -> Tile {
-        let mv = PotEval::new(self.state.get_board(), self.colour)
+        let mv = PotentialEvaluator::new(self.state.get_board(), self.colour)
             .evaluate()
             .get_best_move(self.move_count);
 
@@ -130,8 +138,7 @@ impl HexBot {
         self.state.get_winner(self.colour)
     }
 
-    pub fn swap(&mut self) -> Result<(), BotError> {
+    pub fn swap(&mut self) {
         self.colour = self.colour.opponent();
-        Ok(())
     }
 }

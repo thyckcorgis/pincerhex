@@ -1,7 +1,7 @@
 use rand::Rng;
 extern crate alloc;
 
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::vec::Vec;
 
 use crate::{
     board::Board,
@@ -35,7 +35,7 @@ impl Edge {
     }
 }
 
-pub struct PotEval<'a> {
+pub struct PotentialEvaluator<'a> {
     board: &'a Board,
     active: Colour,
     potential: Vec<[i32; 4]>,
@@ -75,7 +75,7 @@ const PARAMS: Params = Params {
 
 const EDGES: [Edge; 4] = [Edge::Left, Edge::Right, Edge::Top, Edge::Bottom];
 
-impl<'a> PotEval<'a> {
+impl<'a> PotentialEvaluator<'a> {
     pub fn new(board: &'a Board, active: Colour) -> Self {
         let size = board.size as usize;
         Self {
@@ -252,8 +252,7 @@ impl<'a> PotEval<'a> {
 
         if total_weight < 2. {
             let mut closest_high_value = PARAMS.max_value;
-            for idx in 0..6 {
-                let val = neighbours[idx];
+            for &val in neighbours.iter() {
                 if val > min_potential && closest_high_value > val {
                     closest_high_value = val;
                 }
@@ -315,7 +314,6 @@ impl<'a> PotEval<'a> {
             ff = factor / (m * m) as f32;
         }
 
-        let mut moves = BTreeMap::new();
         for i in 0..self.board.size {
             for j in 0..self.board.size {
                 if self.board.get(i, j) != Some(PieceState::Empty) {
@@ -346,8 +344,6 @@ impl<'a> PotEval<'a> {
                     mmp -= PARAMS.mmp_deduction;
                 }
 
-                moves.insert(tile, mmp);
-
                 if mmp < mm {
                     mm = mmp;
                     best_move = Some(tile);
@@ -355,7 +351,7 @@ impl<'a> PotEval<'a> {
             }
         }
 
-        return best_move.expect("finding the best move");
+        best_move.expect("finding the best move")
     }
 
     fn get_quadrant(&self) -> (i8, i8) {

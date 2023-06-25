@@ -17,7 +17,7 @@ struct Element {
 }
 
 impl UnionFind {
-    pub fn new(_size: usize) -> Self {
+    pub const fn new(_size: usize) -> Self {
         Self {
             set: BTreeMap::new(),
         }
