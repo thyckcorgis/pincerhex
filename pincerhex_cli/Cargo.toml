@@ -12,4 +12,4 @@ keywords = ["board-game"]
 
 [dependencies]
 rustyline = "10.1.1"
-pincerhex_bot = { path = "../pincerhex_bot" }
+pincerhex_bot = { path = "../libs/pincerhex_bot" }

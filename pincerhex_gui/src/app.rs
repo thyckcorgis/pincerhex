@@ -3,6 +3,10 @@ use egui::Pos2;
 
 use crate::board::{hex_border, hexagon, BoardCell};
 
+const APP_KEY: &str = "pincerhex-app";
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(default)]
 pub struct PincerhexApp {
     player_is_white: bool,
     new_game: bool,
@@ -20,6 +24,10 @@ impl Default for PincerhexApp {
 }
 
 impl eframe::App for PincerhexApp {
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, APP_KEY, self);
+    }
+
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             if self.new_game {
@@ -32,6 +40,14 @@ impl eframe::App for PincerhexApp {
 }
 
 impl PincerhexApp {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        if let Some(storage) = cc.storage {
+            eframe::get_value(storage, APP_KEY).unwrap_or_default()
+        } else {
+            Default::default()
+        }
+    }
+
     fn start_menu(&mut self, ui: &mut egui::Ui) {
         ui.vertical_centered_justified(|ui| {
             ui.heading("New Game");
@@ -149,7 +165,7 @@ impl Dimensions {
 // }}}
 
 // {{{ Hex
-const SQRT_3: f32 = 1.7320508075688772;
+const SQRT_3: f32 = 1.732_050_8;
 const PI_3: f32 = std::f32::consts::PI / 3.;
 
 pub trait Hex {
