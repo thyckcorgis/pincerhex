@@ -1,6 +1,6 @@
 [workspace]
 
-members = ["pincerhex_cli", "pincerhex_core", "pincerhex_wasm"]
+members = ["pincerhex_cli", "pincerhex_core", "pincerhex_wasm", "pincerhex_gui"]
 
 [profile.release.package.pincerhex_wasm]
 # Tell `rustc` to optimize for small code size.

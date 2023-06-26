@@ -1,0 +1,15 @@
+[package]
+name = "pincerhex_gui"
+description = "GUI for Pincerhex"
+version = "0.1.0"
+edition = "2021"
+license = "GPL3"
+repository = "https://github.com/thyckcorgis/pincerhex/pincerhex_gui"
+categories = ["gui"]
+keywords = ["hex", "board-game"]
+
+[dependencies]
+pincerhex_core = { path = "../pincerhex_core" }
+eframe = "0.22.0"
+egui = "0.22.0"
+env_logger = "0.10.0"
