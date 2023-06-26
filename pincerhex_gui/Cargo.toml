@@ -10,7 +10,7 @@ keywords = ["hex", "board-game"]
 
 [dependencies]
 pincerhex_core = { path = "../libs/pincerhex_core" }
-eframe = { version = "0.22.0", features = ["persistence"] }
+eframe = { version = "0.22.0", default-features = false, features = ["persistence", "glow"] }
 serde = { version = "1.0.164", features = ["serde_derive"] }
 egui = "0.22.0"
 log = "0.4.19"
