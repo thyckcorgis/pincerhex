@@ -10,7 +10,10 @@ keywords = ["hex", "board-game"]
 
 [dependencies]
 pincerhex_core = { path = "../libs/pincerhex_core" }
-eframe = { version = "0.22.0", default-features = false, features = ["persistence", "glow"] }
+eframe = { version = "0.22.0", default-features = false, features = [
+  "persistence",
+  "glow",
+] }
 serde = { version = "1.0.164", features = ["serde_derive"] }
 egui = "0.22.0"
 log = "0.4.19"
@@ -22,8 +25,9 @@ env_logger = "0.10.0"
 wasm-bindgen-futures = "0.4.37"
 
 [profile.release]
-opt-level = 2 # fast and small wasm
+opt-level = 's' # small wasm
+lto = true
 
 # Optimize all dependencies even in debug builds:
 [profile.dev.package."*"]
-opt-level = 2
+opt-level = 's'

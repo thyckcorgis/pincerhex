@@ -1,5 +1,5 @@
 use eframe::egui;
-use egui::Pos2;
+use egui::{Align, Layout, Pos2, Vec2};
 
 use crate::board::{hex_border, hexagon, BoardCell};
 
@@ -73,7 +73,7 @@ impl PincerhexApp {
     }
 
     fn hex_board(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        ui.vertical(|ui| {
+        ui.with_layout(Layout::top_down(Align::Max), |ui| {
             ui.heading("Pincerhex");
             if ui.button("New Game").clicked() {
                 self.restart()
@@ -91,21 +91,26 @@ impl PincerhexApp {
             }
         });
         let rect_size = ctx.screen_rect().size();
-        let dimensions = Dimensions::from_height(rect_size.y);
-        let padding = dimensions.hex_size * 0.75;
-        let start = Pos2::new(rect_size.x / 2., padding);
-        self.cells(start, &dimensions, ui);
-        self.edges(start, &dimensions, ui);
+        let dimensions = Dimensions::from_rect(rect_size.x, rect_size.y);
+        self.cells(&dimensions, ui);
+        self.edges(&dimensions, ui);
     }
 
-    fn cells(&mut self, start: Pos2, dimensions: &Dimensions, ui: &mut egui::Ui) {
+    fn cells(&mut self, dimensions: &Dimensions, ui: &mut egui::Ui) {
+        let (next_y, next_x) = if dimensions.horizontal {
+            (RIGHT_DOWN, RIGHT)
+        } else {
+            (LEFT_DOWN, RIGHT_DOWN)
+        };
+        let start = dimensions.start();
         (0..dimensions.board_size).for_each(|y| {
-            let col_start = start.left_down(dimensions.hex_radius(), y);
+            let col_start = start + next_y * dimensions.hex_radius() * SQRT_3 * y as f32;
             (0..dimensions.board_size).for_each(|x| {
+                let pos = col_start + next_x * dimensions.hex_radius() * SQRT_3 * x as f32;
                 hexagon(
                     ui,
                     dimensions.hex_size,
-                    col_start.right_down(dimensions.hex_radius(), x),
+                    pos,
                     BoardCell {
                         piece: None,
                         idx: (x, y),
@@ -115,15 +120,21 @@ impl PincerhexApp {
         });
     }
 
-    fn edges(&mut self, start: Pos2, dimensions: &Dimensions, ui: &mut egui::Ui) {
+    fn edges(&mut self, dimensions: &Dimensions, ui: &mut egui::Ui) {
+        let (next_y, next_x) = if dimensions.horizontal {
+            (RIGHT_DOWN, RIGHT)
+        } else {
+            (LEFT_DOWN, RIGHT_DOWN)
+        };
+        let start = dimensions.start();
         (0..dimensions.board_size).for_each(|y| {
-            let col_start = start.left_down(dimensions.hex_radius(), y);
+            let col_start = start + next_y * dimensions.hex_radius() * SQRT_3 * y as f32;
             (0..dimensions.board_size).for_each(|x| {
+                let pos = col_start + next_x * dimensions.hex_radius() * SQRT_3 * x as f32;
                 hex_border(
                     ui,
-                    dimensions.hex_size,
-                    col_start.right_down(dimensions.hex_radius(), x),
-                    dimensions.board_size,
+                    dimensions,
+                    pos,
                     BoardCell {
                         piece: None,
                         idx: (x, y),
@@ -136,9 +147,11 @@ impl PincerhexApp {
 
 // {{{ Dimensions
 #[derive(Debug)]
-struct Dimensions {
-    hex_size: f32,
-    board_size: i16,
+pub struct Dimensions {
+    pub hex_size: f32,
+    pub board_size: i16,
+    pub horizontal: bool,
+    pub width: f32,
 }
 
 impl Default for Dimensions {
@@ -146,20 +159,40 @@ impl Default for Dimensions {
         Self {
             hex_size: 40.,
             board_size: 11,
+            horizontal: false,
+            width: 320.,
         }
     }
 }
 
 impl Dimensions {
-    // TODO: Make board horizontal on desktop
-    fn from_height(y: f32) -> Self {
+    fn from_rect(x: f32, y: f32) -> Self {
         let mut dim = Self::default();
-        dim.hex_size = (2. * y) / (3. * dim.board_size as f32);
+        dim.horizontal = x > y;
+        // TODO: do some optimization with basic algebra
+        dim.hex_size = (if dim.horizontal { 2.5 } else { 2. } * y) / (3. * dim.board_size as f32);
+        dim.width = x;
         dim
     }
 
     fn hex_radius(&self) -> f32 {
         self.hex_size / 2.
+    }
+
+    fn padding(&self) -> f32 {
+        self.hex_size * 0.75
+    }
+
+    fn start(&self) -> Pos2 {
+        let padding = self.padding();
+        Pos2::new(
+            if self.horizontal {
+                padding
+            } else {
+                self.width / 2.
+            },
+            padding,
+        )
     }
 }
 // }}}
@@ -168,26 +201,10 @@ impl Dimensions {
 const SQRT_3: f32 = 1.732_050_8;
 const PI_3: f32 = std::f32::consts::PI / 3.;
 
-pub trait Hex {
-    fn right_down(self, size: f32, mul: i16) -> Self;
-    fn left_down(self, size: f32, mul: i16) -> Self;
-}
-
-impl Hex for Pos2 {
-    fn right_down(self, size: f32, mul: i16) -> Self {
-        let len = size * SQRT_3;
-        let x = self.x + len * PI_3.cos() * mul as f32;
-        let y = self.y + len * PI_3.sin() * mul as f32;
-        Self::new(x, y)
-    }
-
-    fn left_down(self, size: f32, mul: i16) -> Self {
-        let len = size * SQRT_3;
-        let x = self.x - len * PI_3.cos() * mul as f32;
-        let y = self.y + len * PI_3.sin() * mul as f32;
-        Self::new(x, y)
-    }
-}
+const LEFT_DOWN: Vec2 = Vec2::new(-0.5, SQRT_3 / 2.);
+const RIGHT_DOWN: Vec2 = Vec2::new(0.5, SQRT_3 / 2.);
+const RIGHT: Vec2 = Vec2::new(1.0, 0.);
+const LEFT: Vec2 = Vec2::new(-1.0, 0.);
 // }}}
 
 // vim:foldmethod=marker

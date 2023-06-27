@@ -3,6 +3,8 @@ use std::iter;
 use eframe::{egui, epaint};
 use egui::{Color32, Pos2, Stroke};
 
+use crate::app::Dimensions;
+
 pub struct BoardCell {
     pub piece: Option<Piece>,
     pub idx: (i16, i16),
@@ -24,8 +26,8 @@ fn hex_points(center: Pos2, radius: f32) -> Vec<Pos2> {
         .collect()
 }
 
-pub fn hex_border(ui: &mut egui::Ui, size: f32, center: Pos2, board_size: i16, cell: BoardCell) {
-    let radius = size / 2.;
+pub fn hex_border(ui: &mut egui::Ui, dimensions: &Dimensions, center: Pos2, cell: BoardCell) {
+    let radius = dimensions.hex_size / 2.;
     let points = hex_points(center, radius);
 
     // TODO: split the vertical segments in half to create the "split" border
@@ -39,11 +41,19 @@ pub fn hex_border(ui: &mut egui::Ui, size: f32, center: Pos2, board_size: i16, c
         .enumerate()
         .for_each(|(idx, pair)| {
             if let [a, b] = pair {
-                let (width, colour) = match (idx, cell.idx) {
-                    (2 | 3, (0, _)) => (4., Color32::WHITE),
-                    (4 | 5, (_, 0)) => (4., Color32::BLACK),
-                    (0 | 5, (x, _)) if x == board_size - 1 => (4., Color32::WHITE),
-                    (1 | 2, (_, y)) if y == board_size - 1 => (4., Color32::BLACK),
+                let (width, colour) = match (idx, cell.idx, dimensions.horizontal) {
+                    (2 | 3, (0, _), false) | (1 | 2, (0, _), true) => (4., Color32::WHITE),
+                    (4 | 5, (_, 0), false) | (3 | 4, (_, 0), true) => (4., Color32::BLACK),
+                    (0 | 5, (x, _), false) | (4 | 5, (x, _), true)
+                        if x == dimensions.board_size - 1 =>
+                    {
+                        (4., Color32::WHITE)
+                    }
+                    (1 | 2, (_, y), false) | (0 | 1, (_, y), true)
+                        if y == dimensions.board_size - 1 =>
+                    {
+                        (4., Color32::BLACK)
+                    }
                     _ => (0., Color32::TRANSPARENT),
                 };
                 ui.painter()
