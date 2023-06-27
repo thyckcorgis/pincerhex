@@ -25,9 +25,9 @@ env_logger = "0.10.0"
 wasm-bindgen-futures = "0.4.37"
 
 [profile.release]
-opt-level = 's' # small wasm
+opt-level = 'z' # small wasm
 lto = true
 
 # Optimize all dependencies even in debug builds:
 [profile.dev.package."*"]
-opt-level = 's'
+opt-level = 'z'
