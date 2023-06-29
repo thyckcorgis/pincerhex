@@ -98,17 +98,14 @@ impl PincerhexApp {
             if ui.button("New Game").clicked() {
                 self.restart()
             }
-            match (self.move_count, self.player_is_white) {
-                (0, true) => {
-                    ui.label("Place a piece anywhere to start.");
-                }
+            ui.label(match (self.move_count, self.player_is_white) {
+                (0, true) => "Place a piece anywhere to start.",
                 (0, false) => {
                     // TODO: Make a move here
+                    ""
                 }
-                (_, _) => {
-                    ui.label("Your turn.");
-                }
-            }
+                (_, _) => "Your turn.",
+            });
         });
         let rect_size = ctx.screen_rect().size();
         let dimensions = Dimensions::from_rect(rect_size.x, rect_size.y);
@@ -149,7 +146,7 @@ impl PincerhexApp {
 #[derive(Debug)]
 pub struct Dimensions {
     pub hex_size: f32,
-    pub board_size: i16,
+    pub board_size: i8,
     pub horizontal: bool,
     pub width: f32,
 }
@@ -166,12 +163,16 @@ impl Default for Dimensions {
 }
 
 impl Dimensions {
-    fn from_rect(x: f32, y: f32) -> Self {
+    fn from_rect(w: f32, h: f32) -> Self {
         let mut dim = Self::default();
-        dim.horizontal = x > y;
-        // TODO: do some optimization with basic algebra
-        dim.hex_size = (if dim.horizontal { 2.5 } else { 2. } * y) / (3. * dim.board_size as f32);
-        dim.width = x;
+        let size = dim.board_size as f32;
+        dim.horizontal = w > h;
+        dim.hex_size = if dim.horizontal {
+            f32::min(2. * h / (SQRT_3 * size), 2. * w / (2. + 3. * size))
+        } else {
+            f32::min(w / (SQRT_3 * size - 1.), 2. * h / (4. * size - 3.)) / (SQRT_3 / 2.)
+        };
+        dim.width = w;
         dim
     }
 
@@ -198,7 +199,7 @@ impl Dimensions {
 // }}}
 
 // {{{ Hex
-const SQRT_3: f32 = 1.732_050_8;
+pub const SQRT_3: f32 = 1.732_050_8;
 const LEFT_DOWN: Vec2 = Vec2::new(-0.5, SQRT_3 / 2.);
 const RIGHT: Vec2 = Vec2::new(1.0, 0.);
 const RIGHT_DOWN: Vec2 = Vec2::new(0.5, SQRT_3 / 2.);

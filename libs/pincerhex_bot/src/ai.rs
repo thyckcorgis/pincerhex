@@ -1,8 +1,7 @@
+use crate::StdRng;
 use alloc::string::String;
-
-use crate::state::{self, State, DEFAULT_SIZE};
-use crate::{StdRng, Winner};
 use pincerhex_core::{first_move, Colour, Move, PieceState, PotentialEvaluator, Tile, TileError};
+use pincerhex_state::{Error as StateError, State, Winner, DEFAULT_SIZE};
 
 /// Whether or not to play with the swap rule
 /// Should probably be an environment variable
@@ -36,7 +35,7 @@ pub struct HexBot {
 
 #[derive(Debug)]
 pub enum BotError {
-    State(state::Error),
+    State(StateError),
     EmptyMove,
     InvalidMove(TileError),
 }
@@ -51,8 +50,8 @@ impl core::fmt::Display for BotError {
     }
 }
 
-impl From<state::Error> for BotError {
-    fn from(v: state::Error) -> Self {
+impl From<StateError> for BotError {
+    fn from(v: StateError) -> Self {
         Self::State(v)
     }
 }
@@ -118,9 +117,9 @@ impl HexBot {
     }
 
     fn handle_swap(&mut self, s: SwapRole) -> Result<Move, BotError> {
+        let mut rng = StdRng(rand::thread_rng());
         match s {
             SwapRole::Start => {
-                let mut rng = StdRng(rand::thread_rng());
                 let (i, j) = first_move(self.size, &mut rng);
                 let mv = Tile::Regular(i, j);
                 self.state
@@ -129,7 +128,7 @@ impl HexBot {
                 Ok(Move::Move(mv))
             }
             SwapRole::Swap => {
-                if self.state.should_swap() {
+                if self.state.should_swap(&mut rng) {
                     self.swap();
                     Ok(Move::Swap)
                 } else {

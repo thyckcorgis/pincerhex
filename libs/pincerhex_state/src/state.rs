@@ -1,7 +1,7 @@
 use alloc::string::String;
-use pincerhex_core::{should_swap, Board, BoardError, Colour, PieceState, Tile};
+use pincerhex_core::{should_swap, Board, BoardError, Colour, PieceState, Rand, Tile};
 
-use crate::{union_find::UnionFind, StdRng, Winner};
+use crate::{union_find::UnionFind, Winner};
 
 pub struct State {
     size: i8,
@@ -50,11 +50,10 @@ impl State {
         &self.board
     }
 
-    pub fn should_swap(&self) -> bool {
-        let mut rng = StdRng(rand::thread_rng());
+    pub fn should_swap(&self, rng: &mut impl Rand) -> bool {
         for i in self.board.iter() {
             if let (Tile::Regular(r, c), PieceState::Colour(_)) = i {
-                return should_swap(r, c, self.size, &mut rng);
+                return should_swap(r, c, self.size, rng);
             }
         }
         false

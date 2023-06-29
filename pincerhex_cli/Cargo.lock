@@ -202,6 +202,7 @@ name = "pincerhex_bot"
 version = "0.1.0"
 dependencies = [
  "pincerhex_core",
+ "pincerhex_state",
  "rand",
 ]
 
@@ -218,6 +219,14 @@ name = "pincerhex_core"
 version = "0.1.0"
 dependencies = [
  "micromath",
+]
+
+[[package]]
+name = "pincerhex_state"
+version = "0.1.0"
+dependencies = [
+ "pincerhex_core",
+ "rand",
 ]
 
 [[package]]

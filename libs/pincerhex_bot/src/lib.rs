@@ -10,21 +10,14 @@
     clippy::cast_possible_truncation
 )]
 
-#[macro_use]
 extern crate alloc;
 
 mod ai;
-mod state;
-mod union_find;
 
 pub use ai::{BotError, HexBot};
 pub use pincerhex_core::{Colour, Move, PieceState};
+pub use pincerhex_state::Winner;
 use rand::{rngs::ThreadRng, Rng};
-
-pub enum Winner {
-    Bot,
-    Opponent,
-}
 
 struct StdRng(ThreadRng);
 

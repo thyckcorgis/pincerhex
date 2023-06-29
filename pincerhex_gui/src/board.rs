@@ -3,12 +3,12 @@ use std::iter;
 use eframe::{egui, epaint};
 use egui::{Color32, Pos2, Rect, Response, Stroke};
 
-use crate::app::Dimensions;
+use crate::app::{Dimensions, SQRT_3};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct BoardCell {
     pub piece: Option<Piece>,
-    pub idx: (i16, i16),
+    pub idx: (i8, i8),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Copy, Clone)]
@@ -38,7 +38,7 @@ fn hex_points(center: Pos2, radius: f32) -> Vec<Pos2> {
         .collect()
 }
 
-pub fn hex_border(ui: &mut egui::Ui, dimensions: &Dimensions, center: Pos2, (x, y): (i16, i16)) {
+pub fn hex_border(ui: &mut egui::Ui, dimensions: &Dimensions, center: Pos2, (x, y): (i8, i8)) {
     let radius = dimensions.hex_size / 2.;
     let points = hex_points(center, radius);
 
@@ -93,11 +93,16 @@ pub fn hexagon(ui: &mut egui::Ui, size: f32, center: Pos2, cell: &BoardCell) -> 
         ..Default::default()
     });
 
-    // TODO: Fix this offset to only take half of the non-rectangular part of the hexagon.
-    // Right now the lower cells get precedence because of the overlap
-    let offset = egui::Vec2::new(radius, radius);
+    let offset = egui::Vec2::new(radius * SQRT_3 / 2., radius * 0.75);
     let hitbox = Rect::from_two_pos(center - offset, center + offset);
     let response = ui.allocate_rect(hitbox, egui::Sense::click());
+
+    #[cfg(debug_assertions)]
+    ui.painter().rect_stroke(
+        hitbox,
+        epaint::Rounding::none(),
+        Stroke::new(1., Color32::BLACK),
+    );
 
     if response.hovered() {
         ui.painter().add(epaint::Mesh {
@@ -128,15 +133,17 @@ pub fn hexagon(ui: &mut egui::Ui, size: f32, center: Pos2, cell: &BoardCell) -> 
         });
 
     if let Some(colour) = cell.piece {
-        ui.painter().circle_filled(
+        ui.painter().circle(
             center,
             radius / 1.5,
             match colour {
                 Piece::Black => Color32::BLACK,
                 Piece::White => Color32::WHITE,
             },
+            Stroke::new(1.5, Color32::DARK_GRAY),
         );
     } else {
+        #[cfg(debug_assertions)]
         ui.painter().text(
             center,
             egui::Align2::CENTER_CENTER,
