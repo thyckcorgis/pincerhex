@@ -1,2 +1,4 @@
 [build]
+public_url = "/pincerhex/"
+release = true
 filehash = false
