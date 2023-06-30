@@ -11,5 +11,4 @@ keywords = ["board-game"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rand = "0.8.5"
 pincerhex_core = { path = "../pincerhex_core" }

@@ -5,16 +5,28 @@ use egui::{Color32, Pos2, Rect, Response, Stroke};
 
 use crate::app::{Dimensions, SQRT_3};
 
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct BoardCell {
-    pub piece: Option<Piece>,
-    pub idx: (i8, i8),
-}
-
 #[derive(serde::Serialize, serde::Deserialize, Copy, Clone)]
 pub enum Piece {
     Black,
     White,
+}
+
+impl Into<pincerhex_core::Colour> for Piece {
+    fn into(self) -> pincerhex_core::Colour {
+        match self {
+            Self::Black => pincerhex_core::Colour::Black,
+            Self::White => pincerhex_core::Colour::White,
+        }
+    }
+}
+
+impl From<pincerhex_core::Colour> for Piece {
+    fn from(value: pincerhex_core::Colour) -> Self {
+        match value {
+            pincerhex_core::Colour::Black => Self::Black,
+            pincerhex_core::Colour::White => Self::White,
+        }
+    }
 }
 
 impl Piece {
@@ -54,17 +66,17 @@ pub fn hex_border(ui: &mut egui::Ui, dimensions: &Dimensions, center: Pos2, (x, 
         .for_each(|(idx, pair)| {
             if let [a, b] = pair {
                 let (width, colour) = match (idx, (x, y), dimensions.horizontal) {
-                    (2 | 3, (0, _), false) | (1 | 2, (0, _), true) => (4., Color32::WHITE),
-                    (4 | 5, (_, 0), false) | (3 | 4, (_, 0), true) => (4., Color32::BLACK),
+                    (2 | 3, (0, _), false) | (1 | 2, (0, _), true) => (4., Color32::BLACK),
+                    (4 | 5, (_, 0), false) | (3 | 4, (_, 0), true) => (4., Color32::WHITE),
                     (0 | 5, (x, _), false) | (4 | 5, (x, _), true)
                         if x == dimensions.board_size - 1 =>
                     {
-                        (4., Color32::WHITE)
+                        (4., Color32::BLACK)
                     }
                     (1 | 2, (_, y), false) | (0 | 1, (_, y), true)
                         if y == dimensions.board_size - 1 =>
                     {
-                        (4., Color32::BLACK)
+                        (4., Color32::WHITE)
                     }
                     _ => (0., Color32::TRANSPARENT),
                 };
@@ -76,7 +88,13 @@ pub fn hex_border(ui: &mut egui::Ui, dimensions: &Dimensions, center: Pos2, (x, 
 
 const HEXAGON_INDICES: [u32; 12] = [0, 1, 2, 3, 4, 5, 0, 2, 3, 0, 5, 3];
 
-pub fn hexagon(ui: &mut egui::Ui, size: f32, center: Pos2, cell: &BoardCell) -> Response {
+pub fn hexagon(
+    ui: &mut egui::Ui,
+    size: f32,
+    center: Pos2,
+    colour: Option<Piece>,
+    hover: bool,
+) -> Response {
     let radius = size / 2.;
     let points = hex_points(center, radius);
 
@@ -104,7 +122,7 @@ pub fn hexagon(ui: &mut egui::Ui, size: f32, center: Pos2, cell: &BoardCell) -> 
         Stroke::new(1., Color32::BLACK),
     );
 
-    if response.hovered() {
+    if hover && response.hovered() {
         ui.painter().add(epaint::Mesh {
             indices: HEXAGON_INDICES.to_vec(),
             vertices: points
@@ -132,7 +150,7 @@ pub fn hexagon(ui: &mut egui::Ui, size: f32, center: Pos2, cell: &BoardCell) -> 
             }
         });
 
-    if let Some(colour) = cell.piece {
+    if let Some(colour) = colour {
         ui.painter().circle(
             center,
             radius / 1.5,
@@ -141,15 +159,6 @@ pub fn hexagon(ui: &mut egui::Ui, size: f32, center: Pos2, cell: &BoardCell) -> 
                 Piece::White => Color32::WHITE,
             },
             Stroke::new(1.5, Color32::DARK_GRAY),
-        );
-    } else {
-        #[cfg(debug_assertions)]
-        ui.painter().text(
-            center,
-            egui::Align2::CENTER_CENTER,
-            format!("{}{}", (cell.idx.0 + 97) as u8 as char, cell.idx.1 + 1),
-            epaint::FontId::default(),
-            Color32::BLACK,
         );
     }
     response

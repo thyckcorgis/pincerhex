@@ -3,6 +3,8 @@
 
 mod app;
 mod board;
+#[cfg(debug_assertions)]
+mod frame_history;
 
 use app::PincerhexApp;
 

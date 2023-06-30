@@ -46,6 +46,14 @@ impl State {
         }
     }
 
+    pub const fn active(&self) -> Colour {
+        self.to_play
+    }
+
+    pub fn set_to_play(&mut self, to_play: Colour) {
+        self.to_play = to_play;
+    }
+
     pub const fn get_board(&self) -> &Board {
         &self.board
     }

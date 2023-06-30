@@ -1,9 +1,72 @@
+use rand::rngs::ThreadRng;
+use rand::Rng;
+
+#[cfg(debug_assertions)]
+use crate::frame_history::FrameHistory;
 use eframe::egui;
 use egui::{Align, Layout, Pos2, Vec2};
+use pincerhex_core::{first_move, PotentialEvaluator};
 
-use crate::board::{hex_border, hexagon, BoardCell, Piece};
+use crate::board::{hex_border, hexagon, Piece};
+use pincerhex_state::{State, Winner};
 
 const APP_KEY: &str = "pincerhex-app";
+
+pub struct PincerhexState(State);
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct SerializedState {
+    active: Piece,
+    pieces: Vec<(i8, i8, Piece)>,
+    size: i8,
+}
+
+impl From<SerializedState> for PincerhexState {
+    fn from(value: SerializedState) -> Self {
+        use pincerhex_core::{PieceState, Tile};
+        let mut state = State::new(value.size);
+        state.set_to_play(value.active.into());
+        for &(r, c, colour) in value.pieces.iter() {
+            state
+                .place_piece(Tile::Regular(r, c), PieceState::Colour(colour.into()))
+                .unwrap();
+        }
+        Self(state)
+    }
+}
+
+impl serde::Serialize for PincerhexState {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use pincerhex_core::{PieceState, Tile};
+        let board = self.0.get_board();
+        let active: Piece = self.0.active().into();
+        let mut pieces = Vec::new();
+        for p in board.iter() {
+            if let (Tile::Regular(r, c), PieceState::Colour(colour)) = p {
+                pieces.push((r, c, colour.into()));
+            }
+        }
+
+        SerializedState {
+            active,
+            pieces,
+            size: board.size,
+        }
+        .serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for PincerhexState {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        SerializedState::deserialize(deserializer).map(|x| x.into())
+    }
+}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -11,42 +74,48 @@ pub struct PincerhexApp {
     player_is_white: bool,
     new_game: bool,
     move_count: u16,
-    // TODO: Use a better data structure
-    board: Vec<BoardCell>,
+    state: PincerhexState,
     active: Piece,
+    #[serde(skip)]
+    won: Option<bool>,
+
+    #[serde(skip)]
+    #[cfg(debug_assertions)]
+    frame_history: crate::frame_history::FrameHistory,
 }
 
 impl Default for PincerhexApp {
     fn default() -> Self {
         let size = Dimensions::default().board_size;
+        let mut state = PincerhexState(State::new(size));
+        state.0.set_to_play(Piece::White.into());
         Self {
             player_is_white: true,
             new_game: true,
+            won: None,
+            #[cfg(debug_assertions)]
+            frame_history: FrameHistory::default(),
             move_count: 0,
             active: Piece::White,
-            board: {
-                let mut board = Vec::with_capacity((size * size) as usize);
-                (0..size).for_each(|y| {
-                    (0..size).for_each(|x| {
-                        board.push(BoardCell {
-                            piece: None,
-                            idx: (x, y),
-                        });
-                    });
-                });
-                board
-            },
+            state,
         }
     }
 }
 
 impl eframe::App for PincerhexApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, APP_KEY, self);
+        if let Some(_) = self.won {
+            eframe::set_value(storage, APP_KEY, &PincerhexApp::default());
+        } else {
+            eframe::set_value(storage, APP_KEY, self);
+        }
     }
 
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, #[allow(dead_code)] frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            #[cfg(debug_assertions)]
+            self.frame_history
+                .on_new_frame(ctx.input(|i| i.time), frame.info().cpu_usage);
             if self.new_game {
                 self.start_menu(ui);
             } else {
@@ -82,6 +151,14 @@ impl PincerhexApp {
                 self.active = if self.player_is_white {
                     Piece::White
                 } else {
+                    use pincerhex_core::{PieceState, Tile};
+                    let mut rand = StdRng(rand::thread_rng());
+                    let (i, j) = first_move(self.state.0.get_board().size, &mut rand);
+                    self.state
+                        .0
+                        .place_piece(Tile::Regular(i, j), PieceState::Colour(Piece::White.into()))
+                        .expect("valid move");
+                    self.move_count += 1;
                     Piece::Black
                 };
             }
@@ -98,21 +175,23 @@ impl PincerhexApp {
             if ui.button("New Game").clicked() {
                 self.restart()
             }
-            ui.label(match (self.move_count, self.player_is_white) {
-                (0, true) => "Place a piece anywhere to start.",
-                (0, false) => {
-                    // TODO: Make a move here
-                    ""
-                }
-                (_, _) => "Your turn.",
+            ui.label(match (self.won, self.move_count, self.player_is_white) {
+                (Some(true), _, _) => "You won!",
+                (Some(false), _, _) => "You lost!",
+                (None, 0, true) => "Place a piece anywhere to start.",
+                (None, 0, false) => "",
+                (None, _, _) => "Your turn.",
             });
         });
         let rect_size = ctx.screen_rect().size();
         let dimensions = Dimensions::from_rect(rect_size.x, rect_size.y);
         self.cells(&dimensions, ui);
+        #[cfg(debug_assertions)]
+        self.frame_history.ui(ui);
     }
 
     fn cells(&mut self, dimensions: &Dimensions, ui: &mut egui::Ui) {
+        use pincerhex_core::{PieceState, Tile};
         let (next_y, next_x) = if dimensions.horizontal {
             (RIGHT_DOWN, RIGHT)
         } else {
@@ -122,23 +201,79 @@ impl PincerhexApp {
         let size = dimensions.hex_radius() * SQRT_3;
         let next_y = size * next_y;
         let next_x = size * next_x;
-        self.board.iter_mut().for_each(|cell| {
-            let (x, y) = cell.idx;
-            let pos = start + next_y * y as f32 + next_x * x as f32;
-            let res = hexagon(ui, dimensions.hex_size, pos, cell);
-            if res.clicked() {
-                if cell.piece.is_none() {
-                    cell.piece = Some(self.active);
-                    self.active = self.active.other();
+        if let Some((x, y)) = self
+            .state
+            .0
+            .get_board()
+            .iter()
+            .find_map(|(tile, piece_state)| {
+                if let Tile::Regular(x, y) = tile {
+                    let piece = match piece_state {
+                        PieceState::Colour(c) => Some(c.into()),
+                        PieceState::Empty => None,
+                    };
+                    let pos = start + next_y * y as f32 + next_x * x as f32;
+                    let ongoing = self.won.is_none();
+                    let res = hexagon(ui, dimensions.hex_size, pos, piece, ongoing);
+                    if res.clicked() && ongoing && piece.is_none() {
+                        return Some((x, y));
+                    }
                 }
+                None
+            })
+        {
+            self.state
+                .0
+                .place_piece(Tile::Regular(x, y), PieceState::Colour(self.active.into()))
+                .unwrap();
+            self.move_count += 1;
+            if let Some(Winner::Opponent) = self.state.0.get_winner(self.active.other().into()) {
+                self.won = Some(true);
+                return;
             }
-        });
+            self.active = self.active.other();
+            let mut rng = StdRng(rand::thread_rng());
+            let (i, j) = PotentialEvaluator::new(
+                self.state.0.get_board(),
+                self.active.into(),
+                self.active.into(),
+            )
+            .evaluate()
+            .get_best_move(self.move_count, &mut rng);
+            let mv = Tile::Regular(i, j);
 
-        self.board.iter().for_each(|&BoardCell { idx, .. }| {
-            let (x, y) = idx;
-            let pos = start + next_y * y as f32 + next_x * x as f32;
-            hex_border(ui, dimensions, pos, idx);
+            self.state
+                .0
+                .place_piece(mv, PieceState::Colour(self.active.into()))
+                .expect("valid move");
+            self.move_count += 1;
+
+            if let Some(Winner::Bot) = self.state.0.get_winner(self.active.into()) {
+                self.won = Some(false);
+                return;
+            }
+
+            self.active = self.active.other();
+        }
+
+        self.state.0.get_board().iter().for_each(|(t, _)| {
+            if let Tile::Regular(x, y) = t {
+                let pos = start + next_y * y as f32 + next_x * x as f32;
+                hex_border(ui, dimensions, pos, (x, y));
+            }
         })
+    }
+}
+
+struct StdRng(ThreadRng);
+
+impl pincerhex_core::Rand for StdRng {
+    fn in_range(&mut self, a: i8, b: i8) -> i8 {
+        self.0.gen_range(a..b)
+    }
+
+    fn next(&mut self) -> f32 {
+        self.0.gen::<f32>()
     }
 }
 
