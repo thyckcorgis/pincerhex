@@ -8,11 +8,11 @@
   <title>Pincerhex</title>
 
   <!-- config for our rust wasm binary. go to https://trunkrs.dev/assets/#rust for more customization -->
-  <script type="module">import init from '/pincerhexpincerhex_gui.js';init('/pincerhexpincerhex_gui_bg.wasm');</script>
+  <script type="module">import init from '/pincerhex/pincerhex_gui.js';init('/pincerhex/pincerhex_gui_bg.wasm');</script>
   <!-- this is the base url relative to which other urls will be constructed. trunk will insert this from the public-url option -->
-  <base href="/pincerhex">
+  <base href="/pincerhex/">
 
-  <link rel="icon" href="/pincerhexfavicon.ico">
+  <link rel="icon" href="/pincerhex/favicon.ico">
 
 
   
@@ -114,8 +114,8 @@
     }
   </style>
 
-<link rel="preload" href="/pincerhexpincerhex_gui_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
-<link rel="modulepreload" href="/pincerhexpincerhex_gui.js"></head>
+<link rel="preload" href="/pincerhex/pincerhex_gui_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
+<link rel="modulepreload" href="/pincerhex/pincerhex_gui.js"></head>
 
 <body>
   <!-- The WASM code will resize the canvas dynamically -->
