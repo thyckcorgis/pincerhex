@@ -1,4 +1,4 @@
-const cacheName = 'egui-template-pwa';
+const cacheName = 'pincerhex-pwa';
 const filesToCache = [
   './',
   './index.html',

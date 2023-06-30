@@ -1,11 +1,10 @@
-use rand::rngs::ThreadRng;
-use rand::Rng;
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 #[cfg(debug_assertions)]
 use crate::frame_history::FrameHistory;
 use eframe::egui;
 use egui::{Align, Layout, Pos2, Vec2};
-use pincerhex_core::{first_move, PotentialEvaluator};
+use pincerhex_core::{first_move, PotentialEvaluator, Rand};
 
 use crate::board::{hex_border, hexagon, Piece};
 use pincerhex_state::{State, Winner};
@@ -76,12 +75,16 @@ pub struct PincerhexApp {
     move_count: u16,
     state: PincerhexState,
     active: Piece,
+
     #[serde(skip)]
     won: Option<bool>,
 
     #[serde(skip)]
     #[cfg(debug_assertions)]
     frame_history: crate::frame_history::FrameHistory,
+
+    #[serde(skip)]
+    rng: WasmRng,
 }
 
 impl Default for PincerhexApp {
@@ -98,6 +101,7 @@ impl Default for PincerhexApp {
             move_count: 0,
             active: Piece::White,
             state,
+            rng: WasmRng::default(),
         }
     }
 }
@@ -111,7 +115,12 @@ impl eframe::App for PincerhexApp {
         }
     }
 
-    fn update(&mut self, ctx: &egui::Context, #[allow(dead_code)] frame: &mut eframe::Frame) {
+    fn update(
+        &mut self,
+        ctx: &egui::Context,
+        #[allow(unused_variables)] frame: &mut eframe::Frame,
+    ) {
+        self.rng.next();
         egui::CentralPanel::default().show(ctx, |ui| {
             #[cfg(debug_assertions)]
             self.frame_history
@@ -152,8 +161,7 @@ impl PincerhexApp {
                     Piece::White
                 } else {
                     use pincerhex_core::{PieceState, Tile};
-                    let mut rand = StdRng(rand::thread_rng());
-                    let (i, j) = first_move(self.state.0.get_board().size, &mut rand);
+                    let (i, j) = first_move(self.state.0.get_board().size, &mut self.rng);
                     self.state
                         .0
                         .place_piece(Tile::Regular(i, j), PieceState::Colour(Piece::White.into()))
@@ -201,27 +209,22 @@ impl PincerhexApp {
         let size = dimensions.hex_radius() * SQRT_3;
         let next_y = size * next_y;
         let next_x = size * next_x;
-        if let Some((x, y)) = self
-            .state
-            .0
-            .get_board()
-            .iter()
-            .find_map(|(tile, piece_state)| {
-                if let Tile::Regular(x, y) = tile {
-                    let piece = match piece_state {
-                        PieceState::Colour(c) => Some(c.into()),
-                        PieceState::Empty => None,
-                    };
-                    let pos = start + next_y * y as f32 + next_x * x as f32;
-                    let ongoing = self.won.is_none();
-                    let res = hexagon(ui, dimensions.hex_size, pos, piece, ongoing);
-                    if res.clicked() && ongoing && piece.is_none() {
-                        return Some((x, y));
-                    }
+        let mut clicked = None;
+        for (tile, piece_state) in self.state.0.get_board().iter() {
+            if let Tile::Regular(x, y) = tile {
+                let piece = match piece_state {
+                    PieceState::Colour(c) => Some(c.into()),
+                    PieceState::Empty => None,
+                };
+                let pos = start + next_y * y as f32 + next_x * x as f32;
+                let ongoing = self.won.is_none();
+                let res = hexagon(ui, dimensions.hex_size, pos, piece, ongoing);
+                if res.clicked() && ongoing && piece.is_none() && clicked.is_none() {
+                    clicked = Some((x, y));
                 }
-                None
-            })
-        {
+            }
+        }
+        if let Some((x, y)) = clicked {
             self.state
                 .0
                 .place_piece(Tile::Regular(x, y), PieceState::Colour(self.active.into()))
@@ -232,14 +235,13 @@ impl PincerhexApp {
                 return;
             }
             self.active = self.active.other();
-            let mut rng = StdRng(rand::thread_rng());
             let (i, j) = PotentialEvaluator::new(
                 self.state.0.get_board(),
                 self.active.into(),
                 self.active.into(),
             )
             .evaluate()
-            .get_best_move(self.move_count, &mut rng);
+            .get_best_move(self.move_count, &mut self.rng);
             let mv = Tile::Regular(i, j);
 
             self.state
@@ -265,9 +267,15 @@ impl PincerhexApp {
     }
 }
 
-struct StdRng(ThreadRng);
+struct WasmRng(SmallRng);
 
-impl pincerhex_core::Rand for StdRng {
+impl Default for WasmRng {
+    fn default() -> Self {
+        Self(SmallRng::seed_from_u64(0))
+    }
+}
+
+impl pincerhex_core::Rand for WasmRng {
     fn in_range(&mut self, a: i8, b: i8) -> i8 {
         self.0.gen_range(a..b)
     }
