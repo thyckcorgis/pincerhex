@@ -11,11 +11,11 @@ pub enum Piece {
     White,
 }
 
-impl Into<pincerhex_core::Colour> for Piece {
-    fn into(self) -> pincerhex_core::Colour {
-        match self {
-            Self::Black => pincerhex_core::Colour::Black,
-            Self::White => pincerhex_core::Colour::White,
+impl From<Piece> for pincerhex_core::Colour {
+    fn from(value: Piece) -> Self {
+        match value {
+            Piece::Black => Self::Black,
+            Piece::White => Self::White,
         }
     }
 }

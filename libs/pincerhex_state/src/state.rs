@@ -38,6 +38,7 @@ impl From<BoardError> for Error {
 }
 
 impl State {
+    #[must_use]
     pub fn new(size: i8) -> Self {
         Self {
             size,
@@ -46,6 +47,7 @@ impl State {
         }
     }
 
+    #[must_use]
     pub const fn active(&self) -> Colour {
         self.to_play
     }
@@ -54,6 +56,7 @@ impl State {
         self.to_play = to_play;
     }
 
+    #[must_use]
     pub const fn get_board(&self) -> &Board {
         &self.board
     }
@@ -67,16 +70,20 @@ impl State {
         false
     }
 
+    /// # Errors
+    /// Will return an `Err` if a set tile was invalid
     #[allow(dead_code)]
     pub fn swap_pieces(&mut self) -> Result<(), Error> {
         self.board.swap_pieces()?;
         Ok(())
     }
 
+    #[must_use]
     pub fn get_compressed(&self) -> String {
         self.board.get_compressed()
     }
 
+    #[must_use]
     pub fn get_pretty(&self) -> String {
         format!("{}", self.board)
     }
@@ -127,6 +134,8 @@ impl State {
         Ok(())
     }
 
+    /// # Errors
+    /// Will return an `Err` if given an invalid tile
     pub fn place_piece(&mut self, t: Tile, s: PieceState) -> Result<(), Error> {
         if let PieceState::Colour(c) = self.board.get_tile(t).ok_or(Error::InvalidTile)? {
             match (s, c) {
@@ -139,6 +148,8 @@ impl State {
         Ok(())
     }
 
+    /// # Errors
+    /// Will return an `Err` if the tile is not empty
     #[allow(dead_code)]
     pub fn try_place_piece(&mut self, t: Tile, c: PieceState) -> Result<(), Error> {
         if self.board.get_tile(t) == Some(PieceState::Empty) {

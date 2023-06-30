@@ -226,7 +226,6 @@ name = "pincerhex_state"
 version = "0.1.0"
 dependencies = [
  "pincerhex_core",
- "rand",
 ]
 
 [[package]]

@@ -1,4 +1,6 @@
 #![no_std]
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
+#![allow(clippy::cast_sign_loss)]
 extern crate alloc;
 use alloc::string::String;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
@@ -16,8 +18,8 @@ enum Move {
 impl From<Move> for u32 {
     fn from(value: Move) -> Self {
         match value {
-            Move::Regular((r, c)) => ((r as u32) << 8) | (c as u32),
-            Move::Swap => 0xffff0000,
+            Move::Regular((r, c)) => ((r as Self) << 8) | (c as Self),
+            Move::Swap => 0xffff_0000,
         }
     }
 }
@@ -35,7 +37,7 @@ impl pincerhex_core::Rand for WasmRng {
 }
 
 #[inline]
-fn get_bot_colour(bot_is_white: bool) -> Colour {
+const fn get_bot_colour(bot_is_white: bool) -> Colour {
     if bot_is_white {
         Colour::White
     } else {
@@ -49,6 +51,7 @@ fn get_bot_colour(bot_is_white: bool) -> Colour {
 ///
 /// * `size` - Size of the board from 1 to 26. Recommended size is 10.
 #[wasm_bindgen]
+#[must_use]
 pub fn get_board(size: i8) -> String {
     Board::new(size).get_compressed()
 }
@@ -61,6 +64,7 @@ pub fn get_board(size: i8) -> String {
 /// * `size` - Size of the board from 1 to 26. Recommended size is 10.
 /// * `seed` - 64-bit seed used for random number generation.
 #[wasm_bindgen]
+#[must_use]
 pub fn get_first_move(bot_is_white: bool, size: i8, seed: u64) -> String {
     let mut rng = WasmRng(SmallRng::seed_from_u64(seed));
     let mut board = Board::new(size);
@@ -86,6 +90,7 @@ pub fn get_first_move(bot_is_white: bool, size: i8, seed: u64) -> String {
 /// * `move_count` - Number of moves played in the game so far.
 /// * `seed` - 64-bit seed used for random number generation.
 #[wasm_bindgen]
+#[must_use]
 pub fn pincerhex_move(
     bot_is_white: bool,
     bot_started_white: bool,
