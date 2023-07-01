@@ -1,10 +1,18 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+#![no_std]
 
 mod app;
 mod board;
+mod dimensions;
 #[cfg(debug_assertions)]
 mod frame_history;
+mod rng;
+mod state;
+
+extern crate alloc;
+
+use alloc::boxed::Box;
 
 use app::PincerhexApp;
 

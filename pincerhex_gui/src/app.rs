@@ -1,74 +1,21 @@
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use alloc::fmt::format;
 
-#[cfg(debug_assertions)]
-use crate::frame_history::FrameHistory;
-#[cfg(target_arch = "wasm32")]
-use eframe::App;
+use eframe::{egui, App};
+use egui::{Align, Layout};
 
-use eframe::egui;
-use egui::{Align, Layout, Pos2, Vec2};
 use pincerhex_core::{first_move, PotentialEvaluator, Rand};
-
-use crate::board::{hex_border, hexagon, Piece};
 use pincerhex_state::{State, Winner};
 
+use crate::board::{hex_border, hexagon, Piece};
+#[cfg(debug_assertions)]
+use crate::frame_history::FrameHistory;
+use crate::{
+    dimensions::{Dimensions, LEFT_DOWN, RIGHT, RIGHT_DOWN, SQRT_3},
+    rng::Rng,
+    state::PincerhexState,
+};
+
 const APP_KEY: &str = "pincerhex-app";
-
-pub struct PincerhexState(State);
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct SerializedState {
-    active: Piece,
-    pieces: Vec<(i8, i8, Piece)>,
-    size: i8,
-}
-
-impl From<SerializedState> for PincerhexState {
-    fn from(value: SerializedState) -> Self {
-        use pincerhex_core::{PieceState, Tile};
-        let mut state = State::new(value.size);
-        state.set_to_play(value.active.into());
-        for &(r, c, colour) in value.pieces.iter() {
-            state
-                .place_piece(Tile::Regular(r, c), PieceState::Colour(colour.into()))
-                .unwrap();
-        }
-        Self(state)
-    }
-}
-
-impl serde::Serialize for PincerhexState {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        use pincerhex_core::{PieceState, Tile};
-        let board = self.0.get_board();
-        let active: Piece = self.0.active().into();
-        let mut pieces = Vec::new();
-        for p in board.iter() {
-            if let (Tile::Regular(r, c), PieceState::Colour(colour)) = p {
-                pieces.push((r, c, colour.into()));
-            }
-        }
-
-        SerializedState {
-            active,
-            pieces,
-            size: board.size,
-        }
-        .serialize(serializer)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for PincerhexState {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        SerializedState::deserialize(deserializer).map(|x| x.into())
-    }
-}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -87,7 +34,7 @@ pub struct PincerhexApp {
     frame_history: crate::frame_history::FrameHistory,
 
     #[serde(skip)]
-    rng: WasmRng,
+    rng: Rng,
 }
 
 impl Default for PincerhexApp {
@@ -104,7 +51,7 @@ impl Default for PincerhexApp {
             move_count: 0,
             active: Piece::White,
             state,
-            rng: WasmRng::default(),
+            rng: Rng::default(),
         }
     }
 }
@@ -142,9 +89,8 @@ impl PincerhexApp {
         }
     }
 
-    #[cfg(target_arch = "wasm32")]
-    fn save_state(&mut self, frame: &mut eframe::Frame) {
-        if let Some(storage) = frame.storage_mut() {
+    fn save_state(&mut self, frame: Option<&mut eframe::Frame>) {
+        if let Some(storage) = frame.and_then(|f| f.storage_mut()) {
             self.save(storage);
         }
     }
@@ -153,7 +99,7 @@ impl PincerhexApp {
         &mut self,
         (i, j): (i8, i8),
         piece: Piece,
-        #[allow(unused_variables)] frame: Option<&mut eframe::Frame>,
+        frame: Option<&mut eframe::Frame>,
     ) -> bool {
         use pincerhex_core::{PieceState, Tile};
         self.state
@@ -173,14 +119,13 @@ impl PincerhexApp {
                 Winner::Opponent => true,
                 Winner::Bot => false,
             });
+            self.save_state(frame);
             true
         } else {
             self.active = self.active.other();
             #[cfg(target_arch = "wasm32")]
             {
-                if let Some(frame) = frame {
-                    self.save_state(frame);
-                }
+                self.save_state(frame);
             }
             false
         }
@@ -196,7 +141,7 @@ impl PincerhexApp {
             };
             ui.add(egui::Checkbox::new(
                 &mut self.player_is_white,
-                format!("Player colour: {label}"),
+                format(format_args!("Player colour: {label}")),
             ));
             if ui.add(egui::Button::new("Start game")).clicked() {
                 self.new_game = false;
@@ -231,11 +176,11 @@ impl PincerhexApp {
             #[cfg(debug_assertions)]
             {
                 self.frame_history.ui(ui);
-                ui.label(format!("{}", self.frame_history.fps()));
+                ui.label(format(format_args!("{}", self.frame_history.fps())));
             }
         });
         let rect_size = ctx.screen_rect().size();
-        let dimensions = Dimensions::from_rect(rect_size.x, rect_size.y);
+        let dimensions = Dimensions::new(rect_size.x, rect_size.y, self.state.0.get_board().size);
         self.cells(&dimensions, ui, frame);
     }
 
@@ -284,92 +229,7 @@ impl PincerhexApp {
             )
             .evaluate()
             .get_best_move(self.move_count, &mut self.rng);
-            if self.place_piece(mv, self.active, Some(frame)) {
-                return;
-            };
+            self.place_piece(mv, self.active, Some(frame));
         }
     }
 }
-
-struct WasmRng(SmallRng);
-
-impl Default for WasmRng {
-    fn default() -> Self {
-        Self(SmallRng::seed_from_u64(0))
-    }
-}
-
-impl pincerhex_core::Rand for WasmRng {
-    fn in_range(&mut self, a: i8, b: i8) -> i8 {
-        self.0.gen_range(a..b)
-    }
-
-    fn next(&mut self) -> f32 {
-        self.0.gen::<f32>()
-    }
-}
-
-// {{{ Dimensions
-#[derive(Debug)]
-pub struct Dimensions {
-    pub hex_size: f32,
-    pub board_size: i8,
-    pub horizontal: bool,
-    pub width: f32,
-}
-
-impl Default for Dimensions {
-    fn default() -> Self {
-        Self {
-            hex_size: 40.,
-            board_size: 11,
-            horizontal: false,
-            width: 320.,
-        }
-    }
-}
-
-impl Dimensions {
-    fn from_rect(w: f32, h: f32) -> Self {
-        let mut dim = Self::default();
-        let size = dim.board_size as f32;
-        dim.horizontal = w > h;
-        dim.hex_size = if dim.horizontal {
-            f32::min(2. * h / (SQRT_3 * size), 2. * w / (2. + 3. * size))
-        } else {
-            f32::min(w / (SQRT_3 * size - 1.), 2. * h / (4. * size - 3.)) / (SQRT_3 / 2.)
-        };
-        dim.width = w;
-        dim
-    }
-
-    fn hex_radius(&self) -> f32 {
-        self.hex_size / 2.
-    }
-
-    fn padding(&self) -> f32 {
-        self.hex_size * 0.75
-    }
-
-    fn start(&self) -> Pos2 {
-        let padding = self.padding();
-        Pos2::new(
-            if self.horizontal {
-                padding
-            } else {
-                self.width / 2.
-            },
-            padding,
-        )
-    }
-}
-// }}}
-
-// {{{ Hex
-pub const SQRT_3: f32 = 1.732_050_8;
-const LEFT_DOWN: Vec2 = Vec2::new(-0.5, SQRT_3 / 2.);
-const RIGHT: Vec2 = Vec2::new(1.0, 0.);
-const RIGHT_DOWN: Vec2 = Vec2::new(0.5, SQRT_3 / 2.);
-// }}}
-
-// vim:foldmethod=marker

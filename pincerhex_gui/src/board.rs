@@ -1,9 +1,10 @@
-use std::iter;
+use alloc::vec::Vec;
+use core::iter;
 
 use eframe::{egui, epaint};
-use egui::{Color32, Pos2, Rect, Response, Stroke};
+use egui::{Color32, Pos2, Rect, Response, Stroke, Vec2};
 
-use crate::app::{Dimensions, SQRT_3};
+use crate::dimensions::{Dimensions, SQRT_3};
 
 #[derive(serde::Serialize, serde::Deserialize, Copy, Clone)]
 pub enum Piece {
@@ -38,16 +39,15 @@ impl Piece {
     }
 }
 
-fn hex_points(center: Pos2, radius: f32) -> Vec<Pos2> {
-    (0..6)
-        .map(|i| {
-            use std::f32::consts::PI;
-            let angle = (PI / 3. * (i as f32)) + (PI / 6.);
-            let x = center.x + radius * angle.cos();
-            let y = center.y + radius * angle.sin();
-            Pos2::new(x, y)
-        })
-        .collect()
+fn hex_points(center: Pos2, radius: f32) -> [Pos2; 6] {
+    [
+        center + radius * Vec2::new(SQRT_3 / 2., 0.5),
+        center + radius * Vec2::new(0., 1.),
+        center + radius * Vec2::new(-SQRT_3 / 2., 0.5),
+        center + radius * Vec2::new(-SQRT_3 / 2., -0.5),
+        center + radius * Vec2::new(0., -1.),
+        center + radius * Vec2::new(SQRT_3 / 2., -0.5),
+    ]
 }
 
 pub fn hex_border(ui: &mut egui::Ui, dimensions: &Dimensions, center: Pos2, (x, y): (i8, i8)) {
@@ -151,15 +151,19 @@ pub fn hexagon(
         });
 
     if let Some(colour) = colour {
-        ui.painter().circle(
-            center,
-            radius / 1.5,
-            match colour {
-                Piece::Black => Color32::BLACK,
-                Piece::White => Color32::WHITE,
-            },
-            Stroke::new(1.5, Color32::DARK_GRAY),
-        );
+        piece(ui, center, radius, colour);
     }
     response
+}
+
+pub fn piece(ui: &mut egui::Ui, center: Pos2, radius: f32, colour: Piece) {
+    ui.painter().circle(
+        center,
+        radius / 1.5,
+        match colour {
+            Piece::Black => Color32::BLACK,
+            Piece::White => Color32::WHITE,
+        },
+        Stroke::new(1.5, Color32::DARK_GRAY),
+    );
 }

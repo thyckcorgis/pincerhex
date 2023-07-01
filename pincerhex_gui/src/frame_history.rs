@@ -1,3 +1,5 @@
+use alloc::{fmt::format, vec::Vec};
+
 use egui::util::History;
 
 pub struct FrameHistory {
@@ -33,10 +35,10 @@ impl FrameHistory {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.label(format!(
+        ui.label(format(format_args!(
             "Mean CPU usage: {:.2} ms / frame",
             1e3 * self.mean_frame_time()
-        ))
+        )))
         .on_hover_text(
             "Includes egui layout and tessellation time.\n\
             Does not include GPU usage, nor overhead for sending data to GPU.",
@@ -88,7 +90,7 @@ impl FrameHistory {
                 line_stroke,
             ));
             let cpu_usage = to_screen.inverse().transform_pos(pointer_pos).y;
-            let text = format!("{:.1} ms", 1e3 * cpu_usage);
+            let text = format(format_args!("{:.1} ms", 1e3 * cpu_usage));
             shapes.push(ui.fonts(|f| {
                 Shape::text(
                     f,
