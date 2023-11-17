@@ -1,7 +1,6 @@
 // Deploy script for github pages
 // Loosely based on Docusaurus Github Pages deploy script
 // https://github.com/facebook/docusaurus/blob/542228ee1beb5cfddd7ba8ae088f109f164e80c5/packages/docusaurus/src/commands/deploy.ts#L43
-// Run `make serve` and open http://localhost:3000 in your browser
 
 package main
 
